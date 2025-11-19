@@ -47,6 +47,10 @@ public class EventEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Lob
+    @Column(name = "image_data", columnDefinition = "LONGTEXT")
+    private String image;
+
     // Getters and Setters
     public Long getEventID() {
         return eventID;
@@ -150,5 +154,13 @@ public class EventEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getImage() {
+        return image;
+    }
+
+    public void setImage(String image) {
+        this.image = image;
     }
 }
