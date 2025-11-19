@@ -5,12 +5,14 @@ import org.qrush.ticketing_system.repository.RoleRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
 public class RoleService {
 
     private final RoleRepository roleRepository;
+    private static final String ROLE_ID_REQUIRED = "Role ID must not be null";
 
     public RoleService(RoleRepository roleRepository) {
         this.roleRepository = roleRepository;
@@ -21,14 +23,16 @@ public class RoleService {
     }
 
     public Optional<RoleEntity> getRoleById(Long id) {
-        return roleRepository.findById(id);
+        return roleRepository.findById(Objects.requireNonNull(id, ROLE_ID_REQUIRED));
     }
 
     public RoleEntity createRole(RoleEntity role) {
-        return roleRepository.save(role);
+        return roleRepository.save(Objects.requireNonNull(role, "Role must not be null"));
     }
 
     public RoleEntity updateRole(Long id, RoleEntity updatedRole) {
+        Objects.requireNonNull(id, ROLE_ID_REQUIRED);
+        Objects.requireNonNull(updatedRole, "Updated role must not be null");
         return roleRepository.findById(id).map(role -> {
             role.setRoleName(updatedRole.getRoleName());
             return roleRepository.save(role);
@@ -36,6 +40,6 @@ public class RoleService {
     }
 
     public void deleteRole(Long id) {
-        roleRepository.deleteById(id);
+        roleRepository.deleteById(Objects.requireNonNull(id, ROLE_ID_REQUIRED));
     }
 }
