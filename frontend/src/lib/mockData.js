@@ -12,11 +12,11 @@ export const mockEvents = [
     endDate: "2024-03-15T17:00:00",
     location: "San Francisco Convention Center",
     category: "technology",
-    ticketPrice: 299.0,
+    ticketPrice: 299,
     capacity: 500,
     registered: 387,
     rating: 4.8,
-    image: "https://images.unsplash.com/photo-1699862731387-d40f6908ca4e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxldmVudCUyMHRpY2tldGluZ3xlbnwwfHx8fDE3NTg0NjM0MDd8MA&ixlib=rb-4.1.0&q=85",
+    image: "",
     organizer: "TechEvents Inc."
   },
   {
@@ -27,11 +27,11 @@ export const mockEvents = [
     endDate: "2024-06-22T23:00:00",
     location: "Golden Gate Park",
     category: "music",
-    ticketPrice: 150.0,
+    ticketPrice: 150,
     capacity: 2000,
     registered: 1650,
     rating: 4.9,
-    image: "https://images.unsplash.com/photo-1699862731387-d40f6908ca4e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxldmVudCUyMHRpY2tldGluZ3xlbnwwfHx8fDE3NTg0NjM0MDd8MA&ixlib=rb-4.1.0&q=85",
+    image: "",
     organizer: "Music Lovers Co."
   },
   {
@@ -42,11 +42,11 @@ export const mockEvents = [
     endDate: "2024-04-10T21:00:00",
     location: "Downtown Business Center",
     category: "business",
-    ticketPrice: 50.0,
+    ticketPrice: 50,
     capacity: 150,
     registered: 89,
     rating: 4.6,
-    image: "https://images.unsplash.com/photo-1699862731387-d40f6908ca4e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxldmVudCUyMHRpY2tldGluZ3xlbnwwfHx8fDE3NTg0NjM0MDd8MA&ixlib=rb-4.1.0&q=85",
+    image: "",
     organizer: "Business Network Pro"
   },
   {
@@ -57,11 +57,11 @@ export const mockEvents = [
     endDate: "2024-05-05T22:00:00",
     location: "Modern Art Gallery",
     category: "art",
-    ticketPrice: 0.0,
+    ticketPrice: 0,
     capacity: 100,
     registered: 67,
     rating: 4.7,
-    image: "https://images.unsplash.com/photo-1699862731387-d40f6908ca4e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxldmVudCUyMHRpY2tldGluZ3xlbnwwfHx8fDE3NTg0NjM0MDd8MA&ixlib=rb-4.1.0&q=85",
+    image: "",
     organizer: "Art Collective"
   },
   {
@@ -72,11 +72,11 @@ export const mockEvents = [
     endDate: "2024-04-25T20:00:00",
     location: "Riverside Restaurant",
     category: "food",
-    ticketPrice: 120.0,
+    ticketPrice: 120,
     capacity: 80,
     registered: 73,
     rating: 4.9,
-    image: "https://images.unsplash.com/photo-1699862731387-d40f6908ca4e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxldmVudCUyMHRpY2tldGluZ3xlbnwwfHx8fDE3NTg0NjM0MDd8MA&ixlib=rb-4.1.0&q=85",
+    image: "",
     organizer: "Culinary Experts"
   },
   {
@@ -87,11 +87,11 @@ export const mockEvents = [
     endDate: "2024-03-30T14:00:00",
     location: "Innovation Hub",
     category: "business",
-    ticketPrice: 25.0,
+    ticketPrice: 25,
     capacity: 200,
     registered: 156,
     rating: 4.5,
-    image: "https://images.unsplash.com/photo-1699862731387-d40f6908ca4e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxldmVudCUyMHRpY2tldGluZ3xlbnwwfHx8fDE3NTg0NjM0MDd8MA&ixlib=rb-4.1.0&q=85",
+    image: "",
     organizer: "Startup Alliance"
   }
 ];
@@ -119,7 +119,7 @@ export const mockTickets = [
     userID: 1,
     eventID: 1,
     qrCode: "QR_CODE_DATA_1",
-    price: 299.0,
+    price: 299,
     purchaseDate: "2024-02-15T10:30:00",
     ticketType: "REGULAR",
     status: "ACTIVE"
