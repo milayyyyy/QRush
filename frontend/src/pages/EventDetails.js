@@ -1,3 +1,4 @@
+/* global globalThis */
 import React, { useCallback, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
@@ -20,220 +21,190 @@ import {
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
 
-const EventDetails = () => {
-  const { id } = useParams();
-  const { isAuthenticated, user } = useAuth();
-  const navigate = useNavigate();
-  const [event, setEvent] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [ticketQuantity, setTicketQuantity] = useState(1);
+const formatDate = (dateString) => {
+  if (!dateString) {
+    return 'Date to be announced';
+  }
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return 'Date to be announced';
+  }
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
 
-  const getStoredOrganizerProfile = useCallback(() => {
-    try {
-      const raw = localStorage.getItem('qrush_organizer_profile');
-      if (!raw) {
-        return null;
-      }
-      const parsed = JSON.parse(raw);
-      if (parsed?.userId && user?.id && parsed.userId !== user.id) {
-        return null;
-      }
-      return parsed;
-    } catch (storageError) {
-      console.warn('Unable to parse stored organizer profile', storageError);
-      return null;
+const getAvailabilityStatus = (registered, capacity) => {
+  if (!capacity) {
+    return { text: 'Capacity TBA', color: 'bg-blue-100 text-blue-700' };
+  }
+  const percentage = Math.min((registered / capacity) * 100, 100);
+  if (percentage >= 95) return { text: 'Almost Full', color: 'bg-red-100 text-red-700' };
+  if (percentage >= 75) return { text: 'Filling Fast', color: 'bg-yellow-100 text-yellow-700' };
+  return { text: 'Available', color: 'bg-green-100 text-green-700' };
+};
+
+const formatTimeRange = (start, end) => {
+  if (!start) {
+    return 'Schedule to be announced';
+  }
+  const startDate = new Date(start);
+  const endDate = end ? new Date(end) : null;
+  if (Number.isNaN(startDate.getTime())) {
+    return 'Schedule to be announced';
+  }
+  const startLabel = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const endLabel = endDate && !Number.isNaN(endDate.getTime())
+    ? endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : 'TBD';
+  return `${startLabel} - ${endLabel}`;
+};
+
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+  }).format(value ?? 0);
+};
+
+const formatPrice = (value) => {
+  if (!Number.isFinite(value) || value <= 0) {
+    return 'Free';
+  }
+  return formatCurrency(value);
+};
+
+const mapEventResponse = (data, storedProfile, user) => {
+  if (!data) {
+    return null;
+  }
+
+  const descriptionSegments = (data.description || '')
+    .split('\n\n')
+    .map(segment => segment.trim())
+    .filter(Boolean);
+
+  const summary = descriptionSegments[0] || 'Event details will be available soon.';
+  const remainingSegments = descriptionSegments.slice(1);
+  const inferredAddress = remainingSegments.length > 0
+    ? remainingSegments[remainingSegments.length - 1]
+    : '';
+  const detailedDescription = remainingSegments.length > 1
+    ? remainingSegments.slice(0, -1).join('\n\n')
+    : '';
+
+  const mappedEvent = {
+    eventID: data.eventID,
+    title: data.name || 'Untitled Event',
+    description: summary,
+    fullDescription: detailedDescription,
+    address: inferredAddress,
+    category: data.category || 'event',
+    startDate: data.startDate || null,
+    endDate: data.endDate || null,
+    location: data.location || 'Venue to be announced',
+    ticketPrice: Number(data.ticketPrice ?? 0),
+    capacity: Number(data.capacity ?? 0),
+    registered: Number(data.registered ?? data.ticketsSold ?? 0),
+    organizerName: data.organizerDisplayName || data.organizer || 'Organizer details pending',
+    organizerEmail: data.organizerEmail || '',
+    organizerPhone: data.organizerPhone || '',
+    image: data.image || null,
+    rating: data.rating ?? null,
+    reviews: data.reviews ?? null,
+    features: data.features || [],
+    agenda: data.agenda || [],
+  };
+
+  if (storedProfile) {
+    const normalizedStoredName = (storedProfile.organizationName || '').trim().toLowerCase();
+    const normalizedEventName = (mappedEvent.organizerName || '').trim().toLowerCase();
+    const normalizedUserName = (user?.name || '').trim().toLowerCase();
+    const matchesStoredName = normalizedStoredName && normalizedStoredName === normalizedEventName;
+    const matchesUserName = normalizedStoredName && normalizedStoredName === normalizedUserName;
+    const matchesUserId = storedProfile?.userId && user?.id && storedProfile.userId === user.id;
+
+    if (matchesStoredName || matchesUserName || matchesUserId) {
+      mappedEvent.organizerName = storedProfile.organizationName || mappedEvent.organizerName;
+      mappedEvent.organizerEmail = storedProfile.email || mappedEvent.organizerEmail;
+      mappedEvent.organizerPhone = storedProfile.contactNumber || mappedEvent.organizerPhone;
     }
-  }, [user?.id]);
+  }
 
-  useEffect(() => {
-    const mapEventResponse = (data) => {
-      if (!data) {
-        return null;
-      }
+  return mappedEvent;
+};
 
-      const descriptionSegments = (data.description || '')
-        .split('\n\n')
-        .map(segment => segment.trim())
-        .filter(Boolean);
+const shareEventLink = (eventTitle, toastInstance) => {
+  const url = typeof globalThis !== 'undefined' && globalThis.location ? globalThis.location.href : '';
+  if (!url) {
+    toastInstance.error('Unable to determine the current link.');
+    return;
+  }
 
-      const summary = descriptionSegments[0] || 'Event details will be available soon.';
-      const remainingSegments = descriptionSegments.slice(1);
-      const inferredAddress = remainingSegments.length > 0
-        ? remainingSegments[remainingSegments.length - 1]
-        : '';
-      const detailedDescription = remainingSegments.length > 1
-        ? remainingSegments.slice(0, -1).join('\n\n')
-        : '';
-
-      const mappedEvent = {
-        eventID: data.eventID,
-        title: data.name || 'Untitled Event',
-        description: summary,
-        fullDescription: detailedDescription,
-        address: inferredAddress,
-        category: data.category || 'event',
-        startDate: data.startDate || null,
-        endDate: data.endDate || null,
-        location: data.location || 'Venue to be announced',
-        ticketPrice: Number(data.ticketPrice ?? 0),
-        capacity: Number(data.capacity ?? 0),
-        registered: Number(data.registered ?? data.ticketsSold ?? 0),
-        organizerName: data.organizerDisplayName || data.organizer || 'Organizer details pending',
-        organizerEmail: data.organizerEmail || '',
-        organizerPhone: data.organizerPhone || '',
-        image: data.image || null,
-        rating: data.rating ?? null,
-        reviews: data.reviews ?? null,
-        features: data.features || [],
-        agenda: data.agenda || [],
-      };
-
-      const storedProfile = getStoredOrganizerProfile();
-      if (storedProfile) {
-        const normalizedStoredName = (storedProfile.organizationName || '').trim().toLowerCase();
-        const normalizedEventName = (mappedEvent.organizerName || '').trim().toLowerCase();
-        const normalizedUserName = (user?.name || '').trim().toLowerCase();
-        const matchesStoredName = normalizedStoredName && normalizedStoredName === normalizedEventName;
-        const matchesUserName = normalizedStoredName && normalizedStoredName === normalizedUserName;
-        const matchesUserId = storedProfile?.userId && user?.id && storedProfile.userId === user.id;
-
-        if (matchesStoredName || matchesUserName || matchesUserId) {
-          mappedEvent.organizerName = storedProfile.organizationName || mappedEvent.organizerName;
-          mappedEvent.organizerEmail = storedProfile.email || mappedEvent.organizerEmail;
-          mappedEvent.organizerPhone = storedProfile.contactNumber || mappedEvent.organizerPhone;
-        }
-      }
-
-      return mappedEvent;
-    };
-
-    const loadEvent = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await apiService.getEvent(id);
-        const mapped = mapEventResponse(response);
-        if (!mapped) {
-          setError('We could not find details for this event.');
-        }
-        setEvent(mapped);
-      } catch (err) {
-        console.error('Failed to load event details', err);
-        setError('Unable to load event details right now.');
-        toast.error('Unable to load event details.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadEvent();
-  }, [getStoredOrganizerProfile, id, user?.id, user?.name]);
-
-  const formatDate = (dateString) => {
-    if (!dateString) {
-      return 'Date to be announced';
-    }
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) {
-      return 'Date to be announced';
-    }
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    navigator.share({
+      title: eventTitle,
+      text: `Check out this amazing event: ${eventTitle}`,
+      url,
     });
-  };
+    return;
+  }
 
-  const getAvailabilityStatus = (registered, capacity) => {
-    if (!capacity) {
-      return { text: 'Capacity TBA', color: 'bg-blue-100 text-blue-700' };
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(url);
+    toastInstance.success('Event link copied to clipboard!');
+    return;
+  }
+
+  toastInstance.error('Sharing is not supported in this browser.');
+};
+
+const processTicketPurchase = ({
+  isAuthenticated,
+  user,
+  event,
+  ticketQuantity,
+  toastInstance,
+  navigate,
+}) => {
+  if (!isAuthenticated) {
+    toastInstance.error('Please sign in to purchase tickets');
+    navigate('/auth');
+    return;
+  }
+
+  if (!user?.id) {
+    toastInstance.error('Your profile is missing an identifier. Please sign out and sign back in.');
+    return;
+  }
+
+  if (!event?.eventID) {
+    toastInstance.error('We could not determine which event to book.');
+    return;
+  }
+
+  toastInstance.promise(
+    apiService.bookTickets({
+      userId: user.id,
+      eventId: event.eventID,
+      quantity: ticketQuantity,
+      ticketType: 'REGULAR',
+    }),
+    {
+      loading: 'Processing your tickets...',
+      success: () => {
+        navigate('/dashboard');
+        return `Successfully booked ${ticketQuantity} ticket${ticketQuantity > 1 ? 's' : ''}!`;
+      },
+      error: 'Unable to complete the booking. Please try again.',
     }
-    const percentage = Math.min((registered / capacity) * 100, 100);
-    if (percentage >= 95) return { text: 'Almost Full', color: 'bg-red-100 text-red-700' };
-    if (percentage >= 75) return { text: 'Filling Fast', color: 'bg-yellow-100 text-yellow-700' };
-    return { text: 'Available', color: 'bg-green-100 text-green-700' };
-  };
+  );
+};
 
-  const formatTimeRange = (start, end) => {
-    if (!start) {
-      return 'Schedule to be announced';
-    }
-    const startDate = new Date(start);
-    const endDate = end ? new Date(end) : null;
-    if (Number.isNaN(startDate.getTime())) {
-      return 'Schedule to be announced';
-    }
-    const startLabel = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const endLabel = endDate && !Number.isNaN(endDate.getTime())
-      ? endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-      : 'TBD';
-    return `${startLabel} - ${endLabel}`;
-  };
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-    }).format(value ?? 0);
-  };
-
-  const formatPrice = (value) => {
-    if (!Number.isFinite(value) || value <= 0) {
-      return 'Free';
-    }
-    return formatCurrency(value);
-  };
-
-  const handlePurchase = () => {
-    if (!isAuthenticated) {
-      toast.error('Please sign in to purchase tickets');
-      navigate('/auth');
-      return;
-    }
-
-    if (!user?.id) {
-      toast.error('Your profile is missing an identifier. Please sign out and sign back in.');
-      return;
-    }
-
-    if (!event?.eventID) {
-      toast.error('We could not determine which event to book.');
-      return;
-    }
-
-    toast.promise(
-      apiService.bookTickets({
-        userId: user.id,
-        eventId: event.eventID,
-        quantity: ticketQuantity,
-        ticketType: 'REGULAR',
-      }),
-      {
-        loading: 'Processing your tickets...',
-        success: () => {
-          navigate('/dashboard');
-          return `Successfully booked ${ticketQuantity} ticket${ticketQuantity > 1 ? 's' : ''}!`;
-        },
-        error: 'Unable to complete the booking. Please try again.',
-      }
-    );
-  };
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: event.title,
-        text: `Check out this amazing event: ${event.title}`,
-        url: window.location.href,
-      });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success('Event link copied to clipboard!');
-    }
-  };
-
+const renderFallbackState = ({ isLoading, error, event, navigate }) => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -275,8 +246,78 @@ const EventDetails = () => {
     );
   }
 
+  return null;
+};
+
+const EventDetails = () => {
+  const { id } = useParams();
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  const [event, setEvent] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [ticketQuantity, setTicketQuantity] = useState(1);
+
+  const getStoredOrganizerProfile = useCallback(() => {
+    try {
+      const raw = localStorage.getItem('qrush_organizer_profile');
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed?.userId && user?.id && parsed.userId !== user.id) {
+        return null;
+      }
+      return parsed;
+    } catch (storageError) {
+      console.warn('Unable to parse stored organizer profile', storageError);
+      return null;
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    const loadEvent = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await apiService.getEvent(id);
+        const storedProfile = getStoredOrganizerProfile();
+        const mapped = mapEventResponse(response, storedProfile, user);
+        if (!mapped) {
+          setError('We could not find details for this event.');
+        }
+        setEvent(mapped);
+      } catch (err) {
+        console.error('Failed to load event details', err);
+        setError('Unable to load event details right now.');
+        toast.error('Unable to load event details.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEvent();
+  }, [getStoredOrganizerProfile, id, user]);
+
+
+  const handlePurchase = () => processTicketPurchase({
+    isAuthenticated,
+    user,
+    event,
+    ticketQuantity,
+    toastInstance: toast,
+    navigate,
+  });
+
+  const handleShare = () => shareEventLink(event.title, toast);
+
+  const fallbackState = renderFallbackState({ isLoading, error, event, navigate });
+  if (fallbackState) {
+    return fallbackState;
+  }
+
   const availability = getAvailabilityStatus(event.registered, event.capacity);
-  const heroImage = event.image || 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80';
+  const heroImage = event.image || '';
   const timeRangeLabel = formatTimeRange(event.startDate, event.endDate);
   const attendeeSummary = event.registered && event.capacity
     ? `${event.registered} registered`
@@ -322,11 +363,19 @@ const EventDetails = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="relative h-96 overflow-hidden">
-        <img 
-          src={heroImage}
-          alt={event.title}
-          className="w-full h-full object-cover"
-        />
+        {heroImage ? (
+          <img
+            src={heroImage}
+            alt={event.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-orange-500 via-rose-500 to-purple-600 flex items-center justify-center px-6 text-center">
+            <span className="text-white text-3xl font-semibold leading-tight">
+              {event.title}
+            </span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
         
         {/* Back Button */}
@@ -442,12 +491,17 @@ const EventDetails = () => {
               <CardContent className="p-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4">What's Included</h3>
                 <div className="grid md:grid-cols-2 gap-3">
-                  {featureList.map((feature, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-gray-600">{feature}</span>
-                    </div>
-                  ))}
+                  {featureList.map((feature) => {
+                    const featureKey = typeof feature === 'string' && feature.trim().length > 0
+                      ? feature
+                      : JSON.stringify(feature);
+                    return (
+                      <div key={featureKey} className="flex items-center space-x-2">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span className="text-gray-600">{feature}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -457,19 +511,24 @@ const EventDetails = () => {
               <CardContent className="p-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4">Event Agenda</h3>
                 <div className="space-y-4">
-                  {agendaItems.map((item, index) => (
-                    <div key={index} className="flex space-x-4 pb-4 border-b border-gray-100 last:border-0">
-                      <div className="w-20 flex-shrink-0">
-                        <span className="text-sm font-medium text-orange-600">{item.time || 'TBD'}</span>
+                  {agendaItems.map((item) => {
+                    const agendaKey = [item.time, item.title, item.speaker]
+                      .filter(Boolean)
+                      .join('::') || item.title || item.time;
+                    return (
+                      <div key={agendaKey} className="flex space-x-4 pb-4 border-b border-gray-100 last:border-0">
+                        <div className="w-20 flex-shrink-0">
+                          <span className="text-sm font-medium text-orange-600">{item.time || 'TBD'}</span>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900">{item.title}</h4>
+                          {item.speaker && (
+                            <p className="text-sm text-gray-600">by {item.speaker}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{item.title}</h4>
-                        {item.speaker && (
-                          <p className="text-sm text-gray-600">by {item.speaker}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -491,9 +550,9 @@ const EventDetails = () => {
 
                     {/* Quantity Selector */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <p className="text-sm font-medium text-gray-700 mb-2">
                         Number of Tickets
-                      </label>
+                      </p>
                       <div className="flex items-center space-x-3">
                         <Button
                           variant="outline"
