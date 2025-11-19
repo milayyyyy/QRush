@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+/* global globalThis */
+import React, { useState, useEffect, useMemo, useCallback, useId } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import { Button } from '../components/ui/button';
@@ -10,7 +11,6 @@ import {
   Calendar,
   BarChart3,
   Users,
-  DollarSign,
   TrendingUp,
   Eye,
   Edit,
@@ -40,6 +40,27 @@ const OrganizerDashboard = () => {
   const [profileSaving, setProfileSaving] = useState(false);
   const [defaultsSaving, setDefaultsSaving] = useState(false);
   const navigate = useNavigate();
+  const organizationNameId = useId();
+  const profileEmailId = useId();
+  const contactNumberId = useId();
+  const defaultLocationId = useId();
+  const defaultPriceId = useId();
+
+  const reloadPage = useCallback(() => {
+    if (typeof globalThis !== 'undefined' && globalThis.location?.reload) {
+      globalThis.location.reload();
+    }
+  }, []);
+
+  const deriveEventPrice = useCallback((event, fallbackPrice) => {
+    if (event.ticketPrice != null) {
+      return String(event.ticketPrice);
+    }
+    if (event.price != null) {
+      return String(event.price);
+    }
+    return fallbackPrice || '';
+  }, []);
 
   const loadStoredProfile = useCallback(() => {
     try {
@@ -148,24 +169,25 @@ const OrganizerDashboard = () => {
   );
 
   const handleViewEvent = (eventId) => {
-    if (!eventId) return;
-    navigate(`/events/${eventId}`);
+    if (eventId) {
+      navigate(`/events/${eventId}`);
+    }
   };
 
   const handleEditEvent = (eventId) => {
-    if (!eventId) return;
-    navigate(`/create-event/${eventId}`);
+    if (eventId) {
+      navigate(`/create-event/${eventId}`);
+    }
   };
 
   const handleEventSettings = (event) => {
-    if (!event) return;
+    if (!event) {
+      return;
+    }
+
     setDefaultsForm((prev) => ({
       location: event.location || prev.location,
-      price: event.ticketPrice != null
-        ? String(event.ticketPrice)
-        : event.price != null
-          ? String(event.price)
-          : prev.price || '',
+      price: deriveEventPrice(event, prev.price),
     }));
     setActiveTab('settings');
     toast.info(`Settings prefilled with details from ${event.title}.`);
@@ -192,7 +214,7 @@ const OrganizerDashboard = () => {
     link.setAttribute('download', `${type}_report.csv`);
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     URL.revokeObjectURL(url);
     toast.success(`${type.replace('-', ' ')} exported.`);
   };
@@ -303,7 +325,7 @@ const OrganizerDashboard = () => {
           <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Dashboard unavailable</h2>
           <p className="text-gray-600 mb-4">{error || 'We could not retrieve your event metrics right now.'}</p>
-          <Button onClick={() => window.location.reload()} className="gradient-orange text-white">
+          <Button onClick={reloadPage} className="gradient-orange text-white">
             Refresh
           </Button>
         </div>
@@ -378,9 +400,6 @@ const OrganizerDashboard = () => {
                   <p className="text-3xl font-bold text-gray-900">
                     {formatCurrency(stats.totalRevenue)}
                   </p>
-                </div>
-                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-orange-600" />
                 </div>
               </div>
             </CardContent>
@@ -596,10 +615,11 @@ const OrganizerDashboard = () => {
                 <CardContent className="px-0 space-y-4">
                   <form className="space-y-4" onSubmit={handleProfileSubmit}>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor={organizationNameId}>
                         Organization Name
                       </label>
                       <input
+                        id={organizationNameId}
                         type="text"
                         className="w-full p-2 border border-gray-300 rounded-lg"
                         value={profileForm.organizationName}
@@ -607,10 +627,11 @@ const OrganizerDashboard = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor={profileEmailId}>
                         Email
                       </label>
                       <input
+                        id={profileEmailId}
                         type="email"
                         className="w-full p-2 border border-gray-300 rounded-lg"
                         value={profileForm.email}
@@ -618,10 +639,11 @@ const OrganizerDashboard = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor={contactNumberId}>
                         Contact Number
                       </label>
                       <input
+                        id={contactNumberId}
                         type="tel"
                         className="w-full p-2 border border-gray-300 rounded-lg"
                         value={profileForm.contactNumber}
@@ -642,10 +664,11 @@ const OrganizerDashboard = () => {
                 <CardContent className="px-0 space-y-4">
                   <form className="space-y-4" onSubmit={handleDefaultsSubmit}>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor={defaultLocationId}>
                         Default Event Location
                       </label>
                       <input
+                        id={defaultLocationId}
                         type="text"
                         className="w-full p-2 border border-gray-300 rounded-lg"
                         value={defaultsForm.location}
@@ -653,10 +676,11 @@ const OrganizerDashboard = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor={defaultPriceId}>
                         Default Ticket Price
                       </label>
                       <input
+                        id={defaultPriceId}
                         type="number"
                         className="w-full p-2 border border-gray-300 rounded-lg"
                         value={defaultsForm.price}
