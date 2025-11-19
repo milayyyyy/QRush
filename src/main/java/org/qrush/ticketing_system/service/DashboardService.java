@@ -33,6 +33,8 @@ public class DashboardService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final AttendanceLogRepository attendanceLogRepository;
+        private static final String USER_ID_REQUIRED = "User ID must not be null";
+        private static final String EVENT_ID_REQUIRED = "Event ID must not be null";
 
     public DashboardService(TicketRepository ticketRepository,
                             EventRepository eventRepository,
@@ -45,14 +47,16 @@ public class DashboardService {
     }
 
     public AttendeeDashboardResponse getAttendeeDashboard(Long userId) {
-        List<TicketEntity> tickets = ticketRepository.findByUser_UserID(userId);
-        List<AttendanceLogEntity> attendanceLogs = attendanceLogRepository.findByUser_UserIDOrderByStartTimeDesc(userId);
+        Long validatedUserId = Objects.requireNonNull(userId, USER_ID_REQUIRED);
+        List<TicketEntity> tickets = ticketRepository.findByUser_UserID(validatedUserId);
+        List<AttendanceLogEntity> attendanceLogs = attendanceLogRepository
+                .findByUser_UserIDOrderByStartTimeDesc(validatedUserId);
 
         Set<Long> attendedEventIds = attendanceLogs.stream()
                 .map(log -> log.getEvent().getEventID())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        double totalSpent = Optional.ofNullable(ticketRepository.sumPriceByUser(userId)).orElse(0.0d);
+        double totalSpent = Optional.ofNullable(ticketRepository.sumPriceByUser(validatedUserId)).orElse(0.0d);
 
         LocalDateTime now = LocalDateTime.now();
         List<AttendeeDashboardResponse.TicketSummary> upcomingTickets = tickets.stream()
@@ -94,7 +98,8 @@ public class DashboardService {
     }
 
     public OrganizerDashboardResponse getOrganizerDashboard(Long userId) {
-        UserEntity organizer = userRepository.findById(userId)
+        Long validatedUserId = Objects.requireNonNull(userId, USER_ID_REQUIRED);
+        UserEntity organizer = userRepository.findById(validatedUserId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
 
         Set<EventEntity> events = new LinkedHashSet<>();
@@ -146,13 +151,14 @@ public class DashboardService {
     }
 
     public StaffDashboardResponse getStaffDashboard(Long eventId) {
-        EventEntity event = eventRepository.findById(eventId)
+        Long validatedEventId = Objects.requireNonNull(eventId, EVENT_ID_REQUIRED);
+        EventEntity event = eventRepository.findById(validatedEventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found with ID: " + eventId));
 
-        List<TicketEntity> tickets = ticketRepository.findByEvent_EventID(eventId);
-        List<AttendanceLogEntity> allLogs = attendanceLogRepository.findByEvent_EventID(eventId);
+        List<TicketEntity> tickets = ticketRepository.findByEvent_EventID(validatedEventId);
+        List<AttendanceLogEntity> allLogs = attendanceLogRepository.findByEvent_EventID(validatedEventId);
         List<AttendanceLogEntity> recentLogs = attendanceLogRepository
-                .findTop25ByEvent_EventIDOrderByStartTimeDesc(eventId);
+                .findTop25ByEvent_EventIDOrderByStartTimeDesc(validatedEventId);
 
         long ticketsSold = tickets.size();
         long checkedIn = allLogs.stream()
