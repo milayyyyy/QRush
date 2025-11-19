@@ -14,11 +14,34 @@ import {
   Clock,
   Image,
   Save,
-  Eye
+  Eye,
+  CheckCircle,
+  List
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../App';
 import { apiService } from '../services/api';
+
+let uniqueIdCounter = 0;
+
+const generateUniqueId = (prefix = 'id') => {
+  uniqueIdCounter += 1;
+  const timePart = Date.now().toString(36);
+  const counterPart = uniqueIdCounter.toString(36);
+  return `${prefix}-${timePart}-${counterPart}`;
+};
+
+const createFeatureItem = (value = '') => ({
+  id: generateUniqueId('feature'),
+  value,
+});
+
+const createAgendaItem = (overrides = {}) => ({
+  id: generateUniqueId('agenda'),
+  time: typeof overrides.time === 'string' ? overrides.time : '',
+  title: typeof overrides.title === 'string' ? overrides.title : '',
+  speaker: typeof overrides.speaker === 'string' ? overrides.speaker : '',
+});
 
 const CreateEvent = () => {
   const navigate = useNavigate();
@@ -44,9 +67,117 @@ const CreateEvent = () => {
     category: 'technology',
     price: 0,
     capacity: 100,
-    image: ''
+    image: '',
+    features: [createFeatureItem()],
+    agenda: [createAgendaItem()]
   });
   const fileInputRef = useRef(null);
+
+  const parseResponseFeatures = useCallback((rawFeatures) => {
+    if (!rawFeatures) {
+      return [];
+    }
+
+    const toFeatureItems = (values) => {
+      return values
+        .map((item) => (typeof item === 'string' ? item : String(item ?? '')))
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+        .map((value) => createFeatureItem(value));
+    };
+
+    if (Array.isArray(rawFeatures)) {
+      return toFeatureItems(rawFeatures);
+    }
+
+    if (typeof rawFeatures === 'string') {
+      const trimmed = rawFeatures.trim();
+      if (!trimmed) {
+        return [];
+      }
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return toFeatureItems(parsed);
+        }
+        if (parsed && Array.isArray(parsed.features)) {
+          return toFeatureItems(parsed.features);
+        }
+      } catch (err) {
+        console.warn('Unable to parse event features', err);
+      }
+    }
+
+    return [];
+  }, []);
+
+  const parseResponseAgenda = useCallback((rawAgenda) => {
+    if (!rawAgenda) {
+      return [];
+    }
+
+    const toAgendaItems = (items) => {
+      return items
+        .map((item) => ({
+          time: typeof item?.time === 'string' ? item.time : '',
+          title: typeof item?.title === 'string' ? item.title : '',
+          speaker: typeof item?.speaker === 'string' ? item.speaker : '',
+        }))
+        .filter((item) => item.time || item.title || item.speaker)
+        .map((item) => createAgendaItem(item));
+    };
+
+    if (Array.isArray(rawAgenda)) {
+      return toAgendaItems(rawAgenda);
+    }
+
+    if (typeof rawAgenda === 'string') {
+      const trimmed = rawAgenda.trim();
+      if (!trimmed) {
+        return [];
+      }
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return toAgendaItems(parsed);
+        }
+        if (parsed && Array.isArray(parsed.agenda)) {
+          return toAgendaItems(parsed.agenda);
+        }
+      } catch (err) {
+        console.warn('Unable to parse event agenda', err);
+      }
+    }
+
+    return [];
+  }, []);
+
+  const sanitizeFeatures = useCallback((features) => {
+    return (features || [])
+      .map((feature) => {
+        if (typeof feature === 'string') {
+          return feature.trim();
+        }
+        if (feature && typeof feature.value === 'string') {
+          return feature.value.trim();
+        }
+        return '';
+      })
+      .filter((feature) => feature.length > 0);
+  }, []);
+
+  const sanitizeAgenda = useCallback((agenda) => {
+    return (agenda || [])
+      .map((item) => {
+        const source = item && typeof item === 'object' ? item : {};
+        return {
+          time: typeof source.time === 'string' ? source.time.trim() : '',
+          title: typeof source.title === 'string' ? source.title.trim() : '',
+          speaker: typeof source.speaker === 'string' ? source.speaker.trim() : '',
+        };
+      })
+      .filter((item) => item.time || item.title || item.speaker);
+  }, []);
 
   const parseStoredOrganizerProfile = useCallback(() => {
     try {
@@ -135,6 +266,8 @@ const CreateEvent = () => {
         const address = segments.length > 1 ? segments[segments.length - 1] : '';
         const detailedSegments = segments.length > 2 ? segments.slice(1, -1) : [];
         const detailedDescription = detailedSegments.join('\n\n');
+        const parsedFeatures = parseResponseFeatures(data.features);
+        const parsedAgenda = parseResponseAgenda(data.agenda);
 
         setFormData((prev) => ({
           ...prev,
@@ -150,6 +283,8 @@ const CreateEvent = () => {
           price: data.ticketPrice !== null && data.ticketPrice !== undefined ? String(data.ticketPrice) : prev.price,
           capacity: data.capacity !== null && data.capacity !== undefined ? String(data.capacity) : prev.capacity,
           image: data.image || '',
+          features: parsedFeatures.length > 0 ? parsedFeatures : [createFeatureItem()],
+          agenda: parsedAgenda.length > 0 ? parsedAgenda : [createAgendaItem()],
         }));
 
         setOrganizerProfile({
@@ -167,7 +302,17 @@ const CreateEvent = () => {
     };
 
     loadEvent();
-  }, [eventId, isEditMode, navigate, parseStoredOrganizerProfile, user?.email, user?.id, user?.name]);
+  }, [
+    eventId,
+    isEditMode,
+    navigate,
+    parseResponseAgenda,
+    parseResponseFeatures,
+    parseStoredOrganizerProfile,
+    user?.email,
+    user?.id,
+    user?.name
+  ]);
 
   const categories = [
     { value: 'technology', label: 'Technology' },
@@ -179,6 +324,57 @@ const CreateEvent = () => {
     { value: 'education', label: 'Education' },
     { value: 'health', label: 'Health & Wellness' }
   ];
+
+  useEffect(() => {
+    setFormData((prev) => {
+      const needsFeatureNormalization = prev.features.some(
+        (feature) => !feature || typeof feature !== 'object' || !feature.id
+      );
+      const needsAgendaNormalization = prev.agenda.some(
+        (item) => !item || typeof item !== 'object' || !item.id
+      );
+
+      if (!needsFeatureNormalization && !needsAgendaNormalization) {
+        return prev;
+      }
+
+      const normalizedFeatures = needsFeatureNormalization
+        ? prev.features.map((feature) => {
+            if (feature && typeof feature === 'object' && feature.id) {
+              return feature;
+            }
+
+            let rawValue = '';
+            if (typeof feature === 'string') {
+              rawValue = feature;
+            } else if (feature && typeof feature.value === 'string') {
+              rawValue = feature.value;
+            }
+
+            return createFeatureItem(rawValue);
+          })
+        : prev.features;
+
+      const normalizedAgenda = needsAgendaNormalization
+        ? prev.agenda.map((item) => {
+            if (item && typeof item === 'object' && item.id) {
+              return item;
+            }
+            return createAgendaItem({
+              time: typeof item?.time === 'string' ? item.time : '',
+              title: typeof item?.title === 'string' ? item.title : '',
+              speaker: typeof item?.speaker === 'string' ? item.speaker : '',
+            });
+          })
+        : prev.agenda;
+
+      return {
+        ...prev,
+        features: normalizedFeatures,
+        agenda: normalizedAgenda,
+      };
+    });
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
@@ -226,6 +422,58 @@ const CreateEvent = () => {
     event.target.value = '';
   };
 
+  const handleFeatureChange = (id, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      features: prev.features.map((feature) => (
+        feature?.id === id ? { ...feature, value } : feature
+      )),
+    }));
+  };
+
+  const addFeature = () => {
+    setFormData((prev) => ({
+      ...prev,
+      features: [...prev.features, createFeatureItem()],
+    }));
+  };
+
+  const removeFeature = (id) => {
+    setFormData((prev) => {
+      const remaining = prev.features.filter((feature) => feature?.id !== id);
+      return {
+        ...prev,
+        features: remaining.length > 0 ? remaining : [createFeatureItem()],
+      };
+    });
+  };
+
+  const handleAgendaChange = (id, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      agenda: prev.agenda.map((item) => (
+        item?.id === id ? { ...item, [field]: value } : item
+      )),
+    }));
+  };
+
+  const addAgendaItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      agenda: [...prev.agenda, createAgendaItem()],
+    }));
+  };
+
+  const removeAgendaItem = (id) => {
+    setFormData((prev) => {
+      const remaining = prev.agenda.filter((item) => item?.id !== id);
+      return {
+        ...prev,
+        agenda: remaining.length > 0 ? remaining : [createAgendaItem()],
+      };
+    });
+  };
+
   const handleClearImage = () => {
     setFormData(prev => ({
       ...prev,
@@ -262,6 +510,8 @@ const CreateEvent = () => {
     const combinedDescription = [formData.description, formData.fullDescription, formData.address]
       .filter(Boolean)
       .join('\n\n');
+    const normalizedFeatures = sanitizeFeatures(formData.features);
+    const normalizedAgenda = sanitizeAgenda(formData.agenda);
 
     const payload = {
       name: formData.title,
@@ -277,6 +527,8 @@ const CreateEvent = () => {
       organizerPhone: (organizerProfile.contactNumber || '').trim(),
       description: combinedDescription || '',
       image: formData.image || null,
+      features: JSON.stringify(normalizedFeatures),
+      agenda: JSON.stringify(normalizedAgenda),
     };
 
     try {
@@ -298,6 +550,23 @@ const CreateEvent = () => {
 
   const pageTitle = isEditMode ? 'Edit Event' : 'Create New Event';
   const submitLabel = isEditMode ? 'Save Changes' : 'Publish Event';
+  const previewFeatureItems = (formData.features || [])
+    .filter((feature) => feature && typeof feature === 'object' && feature.id)
+    .map((feature) => ({
+      id: feature.id,
+      value: typeof feature.value === 'string' ? feature.value.trim() : '',
+    }))
+    .filter((item) => item.value.length > 0);
+
+  const previewAgendaItems = (formData.agenda || [])
+    .filter((item) => item && typeof item === 'object' && item.id)
+    .map((item) => ({
+      id: item.id,
+      time: typeof item.time === 'string' ? item.time.trim() : '',
+      title: typeof item.title === 'string' ? item.title.trim() : '',
+      speaker: typeof item.speaker === 'string' ? item.speaker.trim() : '',
+    }))
+    .filter((item) => item.time || item.title || item.speaker);
 
   if (isInitializing) {
     return (
@@ -585,6 +854,103 @@ const CreateEvent = () => {
             </CardContent>
           </Card>
 
+          {/* What's Included */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <CheckCircle className="w-5 h-5 text-orange-500" />
+                <span>What's Included</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {formData.features.map((featureItem) => (
+                <div
+                  key={featureItem.id}
+                  className="flex flex-col sm:flex-row sm:items-center gap-3"
+                >
+                  <Input
+                    value={featureItem?.value ?? ''}
+                    onChange={(event) => handleFeatureChange(featureItem.id, event.target.value)}
+                    placeholder="Add a highlight or inclusion"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFeature(featureItem.id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+              <div>
+                <Button type="button" variant="outline" size="sm" onClick={addFeature}>
+                  Add Feature
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Event Agenda */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <List className="w-5 h-5 text-orange-500" />
+                <span>Event Agenda</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {formData.agenda.map((item) => (
+                <div key={item.id} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`agenda-time-${item.id}`}>Time</Label>
+                      <Input
+                        id={`agenda-time-${item.id}`}
+                        value={item?.time ?? ''}
+                        onChange={(event) => handleAgendaChange(item.id, 'time', event.target.value)}
+                        placeholder="09:30 AM"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor={`agenda-title-${item.id}`}>Title</Label>
+                      <Input
+                        id={`agenda-title-${item.id}`}
+                        value={item?.title ?? ''}
+                        onChange={(event) => handleAgendaChange(item.id, 'title', event.target.value)}
+                        placeholder="Session title or activity"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`agenda-speaker-${item.id}`}>Speaker / Notes</Label>
+                    <Input
+                      id={`agenda-speaker-${item.id}`}
+                      value={item?.speaker ?? ''}
+                      onChange={(event) => handleAgendaChange(item.id, 'speaker', event.target.value)}
+                      placeholder="Optional speaker or facilitator"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeAgendaItem(item.id)}
+                    >
+                      Remove Item
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <div>
+                <Button type="button" variant="outline" size="sm" onClick={addAgendaItem}>
+                  Add Agenda Item
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Preview */}
           {formData.title && (
             <Card className="bg-blue-50 border-blue-200">
@@ -631,6 +997,36 @@ const CreateEvent = () => {
                       <span>{formData.capacity} capacity</span>
                     </div>
                   </div>
+                  {previewFeatureItems.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="font-semibold text-gray-900 mb-2">What's Included</h4>
+                      <ul className="list-disc list-inside space-y-1 text-gray-600">
+                        {previewFeatureItems.map((feature) => (
+                          <li key={feature.id}>{feature.value}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {previewAgendaItems.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="font-semibold text-gray-900 mb-2">Event Agenda</h4>
+                      <div className="space-y-2 text-gray-600">
+                        {previewAgendaItems.map((item) => (
+                          <div key={item.id}>
+                            <span className="text-sm font-medium text-orange-600 block">
+                              {item.time || 'TBD'}
+                            </span>
+                            <span className="block">{item.title || 'Agenda item'}</span>
+                            {item.speaker && (
+                              <span className="text-sm text-gray-500 block">
+                                Speaker: {item.speaker}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
