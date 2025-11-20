@@ -1,6 +1,8 @@
 package org.qrush.ticketing_system.controller;
 
 import org.qrush.ticketing_system.dto.BookTicketRequest;
+import org.qrush.ticketing_system.dto.TicketScanRequest;
+import org.qrush.ticketing_system.dto.TicketScanResponse;
 import org.qrush.ticketing_system.entity.TicketEntity;
 import org.qrush.ticketing_system.service.TicketService;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +38,11 @@ public class TicketController {
     @PostMapping("/book")
     public List<TicketEntity> bookTickets(@RequestBody BookTicketRequest request) {
         return ticketService.bookTickets(request);
+    }
+
+    @PostMapping("/scan")
+    public TicketScanResponse scanTicket(@RequestBody TicketScanRequest request) {
+        return ticketService.scanTicket(request);
     }
 
     @PutMapping("/{id}")
