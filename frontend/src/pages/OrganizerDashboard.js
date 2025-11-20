@@ -176,10 +176,10 @@ const OrganizerDashboard = () => {
 
     const totals = new Map();
 
-    events.forEach((event) => {
+    for (const event of events) {
       const rawRevenue = Number(event.revenue ?? 0);
       if (Number.isNaN(rawRevenue) || rawRevenue <= 0) {
-        return;
+        continue;
       }
 
       const start = event.eventStart ? new Date(event.eventStart) : null;
@@ -191,7 +191,7 @@ const OrganizerDashboard = () => {
         };
         existing.value += rawRevenue;
         totals.set('unscheduled', existing);
-        return;
+        continue;
       }
 
       const order = start.getFullYear() * 12 + start.getMonth();
@@ -200,7 +200,7 @@ const OrganizerDashboard = () => {
       const existing = totals.get(key) ?? { label, value: 0, order };
       existing.value += rawRevenue;
       totals.set(key, existing);
-    });
+    }
 
     return Array.from(totals.values())
       .sort((a, b) => a.order - b.order)
