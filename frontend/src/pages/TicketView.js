@@ -1,3 +1,4 @@
+/* global globalThis */
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
@@ -152,16 +153,25 @@ const TicketView = () => {
   };
 
   const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
+    const nav = globalThis?.navigator;
+    const shareUrl = globalThis?.location?.href ?? '';
+
+    if (shareUrl && typeof nav?.share === 'function') {
+      nav.share({
         title: ticket.eventTitle,
         text: `Check out my ticket for ${ticket.eventTitle}`,
-        url: window.location.href,
+        url: shareUrl,
       });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success('Ticket link copied to clipboard!');
+      return;
     }
+
+    if (shareUrl && typeof nav?.clipboard?.writeText === 'function') {
+      nav.clipboard.writeText(shareUrl);
+      toast.success('Ticket link copied to clipboard!');
+      return;
+    }
+
+    toast.error('Sharing is not supported on this device.');
   };
 
   if (isLoading) {
@@ -343,8 +353,8 @@ const TicketView = () => {
               Important Instructions
             </h3>
             <ul className="space-y-2">
-              {ticket.instructions.map((instruction, index) => (
-                <li key={index} className="flex items-start space-x-3">
+              {ticket.instructions.map((instruction) => (
+                <li key={instruction} className="flex items-start space-x-3">
                   <span className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></span>
                   <span className="text-gray-600">{instruction}</span>
                 </li>
