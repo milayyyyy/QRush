@@ -187,7 +187,9 @@ public class DashboardService {
                             attendee != null ? attendee.getEmail() : "",
                             log.getStartTime(),
                             log.getStatus(),
-                            Optional.ofNullable(log.getStatus()).orElse("Main Gate")
+                            Optional.ofNullable(log.getGate())
+                                    .filter(gate -> !gate.isBlank())
+                                    .orElse("Main Gate")
                     );
                 })
                 .toList();

@@ -1,9 +1,13 @@
 package org.qrush.ticketing_system.service;
 
 import org.qrush.ticketing_system.dto.BookTicketRequest;
+import org.qrush.ticketing_system.dto.TicketScanRequest;
+import org.qrush.ticketing_system.dto.TicketScanResponse;
+import org.qrush.ticketing_system.entity.AttendanceLogEntity;
 import org.qrush.ticketing_system.entity.EventEntity;
 import org.qrush.ticketing_system.entity.TicketEntity;
 import org.qrush.ticketing_system.entity.UserEntity;
+import org.qrush.ticketing_system.repository.AttendanceLogRepository;
 import org.qrush.ticketing_system.repository.EventRepository;
 import org.qrush.ticketing_system.repository.TicketRepository;
 import org.qrush.ticketing_system.repository.UserRepository;
@@ -22,6 +26,7 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
+    private final AttendanceLogRepository attendanceLogRepository;
     private static final String TICKET_ID_REQUIRED = "Ticket ID must not be null";
     private static final String USER_ID_REQUIRED = "User ID must not be null";
     private static final String EVENT_ID_REQUIRED = "Event ID must not be null";
@@ -29,10 +34,12 @@ public class TicketService {
 
     public TicketService(TicketRepository ticketRepository,
                          UserRepository userRepository,
-                         EventRepository eventRepository) {
+                         EventRepository eventRepository,
+                         AttendanceLogRepository attendanceLogRepository) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
         this.eventRepository = eventRepository;
+        this.attendanceLogRepository = attendanceLogRepository;
     }
 
     public List<TicketEntity> getAllTickets() {
@@ -97,5 +104,112 @@ public class TicketService {
 
     public void deleteTicket(Long id) {
         ticketRepository.deleteById(Objects.requireNonNull(id, TICKET_ID_REQUIRED));
+    }
+
+    public TicketScanResponse scanTicket(TicketScanRequest request) {
+        Objects.requireNonNull(request, "Ticket scan request must not be null");
+
+        String qrCode = Optional.ofNullable(request.qrCode())
+                .map(String::trim)
+                .orElse("");
+        if (qrCode.isEmpty()) {
+            throw new IllegalArgumentException("QR code must not be empty");
+        }
+
+        String gate = Optional.ofNullable(request.gate())
+                .map(String::trim)
+                .filter(gateValue -> !gateValue.isEmpty())
+                .orElse("Main Gate");
+
+        LocalDateTime scannedAt = LocalDateTime.now();
+
+        Optional<TicketEntity> ticketOptional = ticketRepository.findByQrCode(qrCode);
+        if (ticketOptional.isEmpty()) {
+            return new TicketScanResponse(
+                    "invalid",
+                    "No ticket matches the scanned code.",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    gate,
+                    0,
+                    false,
+                    scannedAt,
+                    null
+            );
+        }
+
+        TicketEntity ticket = ticketOptional.get();
+
+        boolean alreadyCheckedIn = Optional.ofNullable(ticket.getStatus())
+                .map(status -> status.equalsIgnoreCase("CHECKED_IN") || status.equalsIgnoreCase("USED"))
+                .orElse(false);
+
+        AttendanceLogEntity latestLog = attendanceLogRepository
+                .findTopByTicket_TicketIDOrderByStartTimeDesc(ticket.getTicketID())
+                .orElse(null);
+
+        AttendanceLogEntity logEntry = new AttendanceLogEntity();
+        logEntry.setTicket(ticket);
+        logEntry.setEvent(ticket.getEvent());
+        logEntry.setUser(ticket.getUser());
+        logEntry.setStartTime(scannedAt);
+        logEntry.setGate(gate);
+
+        int reEntryCount;
+        String status;
+        String message;
+
+        if (alreadyCheckedIn) {
+            status = "duplicate";
+            message = "Ticket was already checked in.";
+            int previousReEntry = Optional.ofNullable(latestLog)
+                    .map(AttendanceLogEntity::getReEntry)
+                    .orElse(0);
+            reEntryCount = previousReEntry + 1;
+            logEntry.setStatus("duplicate");
+            logEntry.setReEntry(reEntryCount);
+        } else {
+            status = "valid";
+            message = "Ticket verified successfully.";
+            reEntryCount = 0;
+            logEntry.setStatus("valid");
+            logEntry.setReEntry(reEntryCount);
+            ticket.setStatus("CHECKED_IN");
+            ticketRepository.save(ticket);
+        }
+
+        attendanceLogRepository.save(logEntry);
+
+        return new TicketScanResponse(
+                status,
+                message,
+                ticket.getTicketID(),
+                ticket.getEvent().getEventID(),
+                formatTicketNumber(ticket),
+                ticket.getUser().getName(),
+                ticket.getUser().getEmail(),
+                ticket.getEvent().getName(),
+                ticket.getEvent().getStartDate(),
+                ticket.getEvent().getEndDate(),
+                gate,
+                reEntryCount,
+                alreadyCheckedIn,
+                scannedAt,
+                Optional.ofNullable(latestLog).map(AttendanceLogEntity::getStartTime).orElse(null)
+        );
+    }
+
+    private String formatTicketNumber(TicketEntity ticket) {
+        if (ticket == null || ticket.getTicketID() == null) {
+            return "";
+        }
+        String prefix = Objects.toString(ticket.getTicketType(), "TICKET");
+        return "%s-%06d".formatted(prefix.replaceAll("\\s+", "").toUpperCase(), ticket.getTicketID());
     }
 }
