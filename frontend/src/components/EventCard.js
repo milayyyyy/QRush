@@ -80,7 +80,7 @@ const EventCard = ({ event }) => {
             </div>
             <div className="flex items-center text-sm text-gray-600">
               <Users className="w-4 h-4 mr-2 text-orange-500" />
-              <span>{event.registered} / {event.capacity} registered</span>
+              <span>{event.ticketsSold} / {event.capacity} registered</span>
             </div>
           </div>
 
