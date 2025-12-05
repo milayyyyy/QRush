@@ -514,15 +514,6 @@ const EventDetails = () => {
       )
     : null;
 
-  const featureList = event.features.length > 0
-    ? event.features
-    : [
-        'Instant QR ticket confirmation',
-        'Organizer support contact available',
-        'Entry management powered by QRush',
-        'Secure checkout with payment receipts',
-      ];
-
   const [rangeStart, rangeEnd] = timeRangeLabel.includes(' - ')
     ? timeRangeLabel.split(' - ')
     : [timeRangeLabel, ''];

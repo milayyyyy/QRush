@@ -148,6 +148,17 @@ const TicketView = () => {
     }).format(value ?? 0);
   };
 
+  const formatTime = (value) => {
+    if (!value) {
+      return 'Time TBA';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'Time TBA';
+    }
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+
   const handleDownload = async () => {
     try {
       // Create a canvas to draw the ticket
