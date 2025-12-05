@@ -107,6 +107,30 @@ const StaffDashboard = () => {
     }
   }, [selectedEventId, fetchDashboard]);
 
+  // Auto-refresh dashboard every 10 seconds to show latest scans
+  useEffect(() => {
+    if (!selectedEventId) {
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      fetchDashboard(selectedEventId, { showSpinner: false });
+    }, 10000); // Refresh every 10 seconds
+    
+    // Also refresh when tab becomes visible
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboard(selectedEventId, { showSpinner: false });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [selectedEventId, fetchDashboard]);
+
   useEffect(() => {
     setManualResult(null);
     setBulkResult(null);

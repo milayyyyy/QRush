@@ -116,9 +116,13 @@ const QRScanner = () => {
       toast.error('Unable to validate ticket. Please try again.');
     } finally {
       setIsProcessing(false);
-      stopScanning();
+      // Don't stop scanning - allow continuous scanning
+      // Reset the last scanned code after a delay to allow re-scanning same ticket if needed
+      setTimeout(() => {
+        lastScannedCodeRef.current = null;
+      }, 3000);
     }
-  }, [isProcessing, stopScanning, user?.id]);
+  }, [isProcessing, user?.id]);
 
   const handleManualSubmit = async (e) => {
     e.preventDefault();
@@ -577,7 +581,13 @@ const QRScanner = () => {
 
               <div className="mt-6 flex space-x-3">
                 <Button
-                  onClick={startScanning}
+                  onClick={() => {
+                    setScannedData(null);
+                    lastScannedCodeRef.current = null;
+                    if (!isScanning) {
+                      startScanning();
+                    }
+                  }}
                   className="gradient-orange text-white flex-1"
                 >
                   <QrCode className="w-4 h-4 mr-2" />
