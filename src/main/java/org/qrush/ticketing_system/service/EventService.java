@@ -102,6 +102,8 @@ public class EventService {
             event.setOrganizerEmail(updatedEvent.getOrganizerEmail());
             event.setOrganizerPhone(updatedEvent.getOrganizerPhone());
             event.setDescription(updatedEvent.getDescription());
+            // Fix: update ticketTypes from organizer input
+            event.setTicketTypes(updatedEvent.getTicketTypes());
             if (updatedEvent.getImage() != null) {
                 event.setImage(updatedEvent.getImage());
             }
