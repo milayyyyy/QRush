@@ -282,6 +282,15 @@ public class TicketService {
     }
 
     private TicketScanResponse processTicketEntry(TicketEntity ticket, String gate, LocalDateTime scannedAt) {
+
+                // Restrict scan to event day only
+                if (ticket.getEvent() != null && ticket.getEvent().getStartDate() != null) {
+                    LocalDateTime eventStart = ticket.getEvent().getStartDate();
+                    // Only allow scan if scannedAt is on the same day as eventStart
+                    if (!(scannedAt.toLocalDate().isEqual(eventStart.toLocalDate()))) {
+                        return buildInvalidResponse("QR code is only valid for scanning on the event day (" + eventStart.toLocalDate() + ")", gate, scannedAt);
+                    }
+                }
         AttendanceLogEntity latestLog = attendanceLogRepository
                 .findTopByTicket_TicketIDOrderByStartTimeDesc(ticket.getTicketID())
                 .orElse(null);
