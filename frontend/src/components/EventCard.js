@@ -69,9 +69,12 @@ const EventCard = ({ event }) => {
           </div>
         )}
         <div className="absolute top-4 left-4 flex flex-col gap-2">
-          <Badge className={availability.color}>
-            {availability.text}
-          </Badge>
+          {/* Only show 'Available' badge if not ENDED */}
+          {event.status !== 'ENDED' && (
+            <Badge className={availability.color}>
+              {availability.text}
+            </Badge>
+          )}
           {statusBadge && (
             <Badge className={statusBadge.color}>{statusBadge.text}</Badge>
           )}
