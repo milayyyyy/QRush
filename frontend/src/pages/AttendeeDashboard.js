@@ -1,3 +1,5 @@
+  // Search bar state for filtering tickets
+  const [ticketSearch, setTicketSearch] = useState("");
 /* global globalThis */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -105,7 +107,16 @@ const AttendeeDashboard = () => {
   }
 
   const totalSpent = dashboard.totalSpent ?? 0;
-  const upcomingTickets = dashboard.upcomingTickets ?? [];
+  // Filter tickets by search
+  const upcomingTickets = (dashboard.upcomingTickets ?? []).filter(ticket => {
+    if (!ticketSearch.trim()) return true;
+    const search = ticketSearch.toLowerCase();
+    return (
+      (ticket.eventTitle && ticket.eventTitle.toLowerCase().includes(search)) ||
+      (ticket.status && ticket.status.toLowerCase().includes(search)) ||
+      (ticket.eventStart && new Date(ticket.eventStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase().includes(search))
+    );
+  });
   const pastEvents = dashboard.pastEvents ?? [];
 
   const qrFromTicket = (ticket) => {
@@ -297,14 +308,24 @@ const AttendeeDashboard = () => {
 
           {/* My Tickets Tab */}
           <TabsContent value="tickets" className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-2xl font-semibold text-white">My Tickets</h2>
-              <Link to="/events">
-                <Button className="gradient-orange text-black">
-                  <Ticket className="w-4 h-4 mr-2" />
-                  Browse More Events
-                </Button>
-              </Link>
+              <div className="flex flex-1 justify-end gap-2">
+                <input
+                  type="text"
+                  placeholder="Search tickets..."
+                  value={ticketSearch}
+                  onChange={e => setTicketSearch(e.target.value)}
+                  className="w-full sm:w-64 p-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none"
+                  style={{maxWidth:'320px'}}
+                />
+                <Link to="/events">
+                  <Button className="gradient-orange text-black">
+                    <Ticket className="w-4 h-4 mr-2" />
+                    Browse More Events
+                  </Button>
+                </Link>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">

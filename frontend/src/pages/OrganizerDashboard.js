@@ -419,7 +419,25 @@ const OrganizerDashboard = () => {
     );
   }
 
-  const events = dashboard.events ?? [];
+  // Search bar state for filtering events
+  const [eventSearch, setEventSearch] = useState("");
+  // Sort events so newest created event is at the top
+  const events = (dashboard.events ?? [])
+    .slice()
+    .sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : (a.eventStart ? new Date(a.eventStart).getTime() : a.eventId);
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : (b.eventStart ? new Date(b.eventStart).getTime() : b.eventId);
+      return bTime - aTime;
+    })
+    .filter(event => {
+      if (!eventSearch.trim()) return true;
+      const search = eventSearch.toLowerCase();
+      return (
+        (event.title && event.title.toLowerCase().includes(search)) ||
+        (event.status && event.status.toLowerCase().includes(search)) ||
+        (event.eventStart && new Date(event.eventStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase().includes(search))
+      );
+    });
   const stats = {
     totalEvents: dashboard.totalEvents ?? 0,
     totalTicketsSold: dashboard.totalTicketsSold ?? 0,
@@ -528,14 +546,24 @@ const OrganizerDashboard = () => {
 
           {/* Events Tab */}
           <TabsContent value="events" className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-2xl font-semibold text-white">My Events</h2>
-              <Link to="/create-event">
-                <Button variant="outline">
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Event
-                </Button>
-              </Link>
+              <div className="flex flex-1 justify-end gap-2">
+                <input
+                  type="text"
+                  placeholder="Search events..."
+                  value={eventSearch}
+                  onChange={e => setEventSearch(e.target.value)}
+                  className="w-full sm:w-64 p-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none"
+                  style={{maxWidth:'320px'}}
+                />
+                <Link to="/create-event">
+                  <Button variant="outline">
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Event
+                  </Button>
+                </Link>
+              </div>
             </div>
 
             <div className="space-y-4">
