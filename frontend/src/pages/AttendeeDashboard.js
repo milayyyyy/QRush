@@ -1,5 +1,4 @@
-  // Search bar state for filtering tickets
-  const [ticketSearch, setTicketSearch] = useState("");
+
 /* global globalThis */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -30,6 +29,8 @@ const AttendeeDashboard = () => {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Search bar state for filtering tickets
+  const [ticketSearch, setTicketSearch] = useState("");
 
   const handleRefresh = () => {
     if (typeof globalThis !== 'undefined' && globalThis.location &&
