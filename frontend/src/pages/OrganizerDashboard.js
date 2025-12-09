@@ -393,6 +393,9 @@ const OrganizerDashboard = () => {
     }
   };
 
+  // Search bar state for filtering events
+  const [eventSearch, setEventSearch] = useState("");
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -418,9 +421,6 @@ const OrganizerDashboard = () => {
       </div>
     );
   }
-
-  // Search bar state for filtering events
-  const [eventSearch, setEventSearch] = useState("");
   // Sort events so newest created event is at the top
   const events = (dashboard.events ?? [])
     .slice()
