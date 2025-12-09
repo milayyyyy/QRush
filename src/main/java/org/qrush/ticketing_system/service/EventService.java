@@ -19,6 +19,19 @@ import java.util.Optional;
 
 @Service
 public class EventService {
+    // Scheduled job to update event status to ENDED when endDateTime passes
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 60000) // every 60 seconds
+    @Transactional
+    public void updateEndedEvents() {
+        List<EventEntity> events = eventRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        for (EventEntity event : events) {
+            if (event.getStatus() == org.qrush.ticketing_system.entity.EventStatus.AVAILABLE && event.getEndDate().isBefore(now)) {
+                event.setStatus(org.qrush.ticketing_system.entity.EventStatus.ENDED);
+                eventRepository.save(event);
+            }
+        }
+    }
 
     private final EventRepository eventRepository;
     private final EventViewRepository eventViewRepository;
