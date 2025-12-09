@@ -12,6 +12,21 @@ import { useAuth } from '../App';
 const viewedEventsThisSession = new Set();
 
 const EventCard = ({ event }) => {
+    // Parse ticketTypes JSON and get the lowest price
+    let displayPrice = event.ticketPrice;
+    if (event.ticketTypes) {
+      try {
+        const types = JSON.parse(event.ticketTypes);
+        if (Array.isArray(types) && types.length > 0) {
+          const prices = types.map(t => Number(t.price)).filter(p => !isNaN(p));
+          if (prices.length > 0) {
+            displayPrice = Math.min(...prices);
+          }
+        }
+      } catch (e) {
+        // Ignore parse errors, fallback to ticketPrice
+      }
+    }
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -121,9 +136,9 @@ const EventCard = ({ event }) => {
           <div className="flex items-center justify-between pt-4 border-t border-orange-600/20">
             <div>
               <span className="text-2xl font-bold text-white">
-                {event.ticketPrice === 0 ? 'Free' : `₱${event.ticketPrice}`}
+                {displayPrice === 0 ? 'Free' : `₱${displayPrice}`}
               </span>
-              {event.ticketPrice > 0 && (
+              {displayPrice > 0 && (
                 <span className="text-sm text-gray-500 ml-1">per ticket</span>
               )}
             </div>
