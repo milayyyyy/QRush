@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import { isDemoAccount, mockAttendeeDashboard } from '../lib/demoData';
 
 const AttendeeDashboard = () => {
   const { user } = useAuth();
@@ -48,7 +49,18 @@ const AttendeeDashboard = () => {
       }
       try {
         setLoading(true);
-        const data = await apiService.getAttendeeDashboard(user.id);
+        
+        let data;
+        // Check if this is a demo account
+        if (isDemoAccount(user.id)) {
+          // Use mock data for demo accounts
+          data = mockAttendeeDashboard;
+          toast.info('Using demo data - no backend required!');
+        } else {
+          // Fetch real data from API
+          data = await apiService.getAttendeeDashboard(user.id);
+        }
+        
         setDashboard(data);
       } catch (err) {
         console.error('Failed to load attendee dashboard', err);

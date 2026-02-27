@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import { isDemoAccount, mockOrganizerDashboard, mockEvents } from '../lib/demoData';
 
 const ORGANIZER_PROFILE_STORAGE_KEY = 'qrush_organizer_profile';
 
@@ -102,7 +103,18 @@ const OrganizerDashboard = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiService.getOrganizerDashboard(user.id);
+
+      let data;
+      // Check if this is a demo account
+      if (isDemoAccount(user.id)) {
+        // Use mock data for demo accounts
+        data = mockOrganizerDashboard;
+        toast.info('Using demo data - no backend required!');
+      } else {
+        // Fetch real data from API
+        data = await apiService.getOrganizerDashboard(user.id);
+      }
+      
       setDashboard(data);
 
       const storedProfile = loadStoredProfile();

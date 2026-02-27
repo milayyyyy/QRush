@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import { isDemoAccount, mockStaffDashboard, mockEvents } from '../lib/demoData';
 
 const BULK_PLACEHOLDER = [
   'Enter ticket numbers, one per line',
@@ -56,7 +57,17 @@ const StaffDashboard = () => {
       if (showSpinner) {
         setLoading(true);
       }
-      const data = await apiService.getStaffDashboard(eventId);
+      
+      let data;
+      // Check if this is a demo account
+      if (isDemoAccount(user?.id)) {
+        // Use mock data for demo accounts
+        data = mockStaffDashboard;
+      } else {
+        // Fetch real data from API
+        data = await apiService.getStaffDashboard(eventId);
+      }
+      
       setDashboard(data);
       setError(null);
     } catch (err) {
@@ -68,13 +79,24 @@ const StaffDashboard = () => {
         setLoading(false);
       }
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     const initialise = async () => {
       try {
         setLoading(true);
-        const fetchedEvents = await apiService.getEvents();
+        
+        let fetchedEvents;
+        // Check if this is a demo account
+        if (isDemoAccount(user?.id)) {
+          // Use mock events for demo accounts
+          fetchedEvents = mockEvents;
+          toast.info('Using demo data - no backend required!');
+        } else {
+          // Fetch real events from API
+          fetchedEvents = await apiService.getEvents();
+        }
+        
         // Only include available events (not cancelled, not ended)
         const now = new Date();
         const availableEvents = fetchedEvents.filter(event => {
@@ -103,7 +125,7 @@ const StaffDashboard = () => {
     };
 
     initialise();
-  }, [fetchDashboard]);
+  }, [fetchDashboard, user?.id]);
 
   useEffect(() => {
     if (!selectedEventId) {

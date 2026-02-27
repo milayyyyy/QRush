@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { isDemoAccount, mockNotifications } from '../lib/demoData';
 
 const NavLink = ({ to, children, className = "", onClick, currentHash }) => {
   const location = useLocation();
@@ -113,7 +114,15 @@ const Navbar = () => {
     if (!user?.id) return;
     
     try {
-      const data = await apiService.getNotifications(user.id);
+      let data;
+      // Check if this is a demo account
+      if (isDemoAccount(user.id)) {
+        // Use mock notifications for demo accounts
+        data = mockNotifications;
+      } else {
+        // Fetch real notifications from API
+        data = await apiService.getNotifications(user.id);
+      }
       setNotifications(data);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
@@ -133,7 +142,10 @@ const Navbar = () => {
 
   const markAsRead = async (id) => {
     try {
-      await apiService.markNotificationAsRead(id);
+      // Skip API call for demo accounts
+      if (!isDemoAccount(user?.id)) {
+        await apiService.markNotificationAsRead(id);
+      }
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, isRead: true } : n)
       );
@@ -146,7 +158,10 @@ const Navbar = () => {
     if (!user?.id) return;
     
     try {
-      await apiService.markAllNotificationsAsRead(user.id);
+      // Skip API call for demo accounts
+      if (!isDemoAccount(user.id)) {
+        await apiService.markAllNotificationsAsRead(user.id);
+      }
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
