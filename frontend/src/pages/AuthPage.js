@@ -74,6 +74,34 @@ const AuthPage = () => {
     }
   ];
 
+  // Demo accounts for quick testing
+  const demoAccounts = {
+    attendee: {
+      id: 'demo-attendee-123',
+      email: 'demo.attendee@qrush.com',
+      name: 'Demo Attendee',
+      role: 'attendee',
+      contact: '09123456789',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo-attendee'
+    },
+    organizer: {
+      id: 'demo-organizer-456',
+      email: 'demo.organizer@qrush.com',
+      name: 'Demo Organizer',
+      role: 'organizer',
+      contact: '09987654321',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo-organizer'
+    },
+    staff: {
+      id: 'demo-staff-789',
+      email: 'demo.staff@qrush.com',
+      name: 'Demo Staff',
+      role: 'staff',
+      contact: '09555555555',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo-staff'
+    }
+  };
+
   // Real-time email validation triggered on field interaction
   useEffect(() => {
     if (touchedFields.email) {
@@ -125,6 +153,16 @@ const AuthPage = () => {
   // Tracks field interaction for validation timing
   const handleFieldBlur = (fieldName) => {
     setTouchedFields(prev => ({ ...prev, [fieldName]: true }));
+  };
+
+  // Handle demo account login
+  const handleDemoLogin = (demoRole) => {
+    const demoUser = demoAccounts[demoRole];
+    if (demoUser) {
+      login(demoUser);
+      toast.success(`Welcome to QRush, ${demoUser.name}!`);
+      navigate('/dashboard');
+    }
   };
 
   // Authentication submission handler for both login and registration
@@ -402,6 +440,44 @@ const AuthPage = () => {
                       'Sign In'
                     )}
                   </Button>
+
+                  {/* Demo Account Divider */}
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-700"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-gray-900 text-gray-400">Try Demo Accounts</span>
+                    </div>
+                  </div>
+
+                  {/* Demo Account Buttons */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => handleDemoLogin('attendee')}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-sm h-10"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Attendee
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => handleDemoLogin('organizer')}
+                      className="bg-green-600 hover:bg-green-700 text-white text-sm h-10"
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Organizer
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => handleDemoLogin('staff')}
+                      className="bg-purple-600 hover:bg-purple-700 text-white text-sm h-10"
+                    >
+                      <Smartphone className="w-4 h-4 mr-2" />
+                      Staff
+                    </Button>
+                  </div>
                 </form>
 
                 <div className="text-center text-sm text-gray-400">
