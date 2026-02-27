@@ -19,6 +19,19 @@ import java.util.Optional;
 
 @Service
 public class EventService {
+    // Scheduled job to update event status to ENDED when endDateTime passes
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 60000) // every 60 seconds
+    @Transactional
+    public void updateEndedEvents() {
+        List<EventEntity> events = eventRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        for (EventEntity event : events) {
+            if (event.getStatus() == org.qrush.ticketing_system.entity.EventStatus.AVAILABLE && event.getEndDate().isBefore(now)) {
+                event.setStatus(org.qrush.ticketing_system.entity.EventStatus.ENDED);
+                eventRepository.save(event);
+            }
+        }
+    }
 
     private final EventRepository eventRepository;
     private final EventViewRepository eventViewRepository;
@@ -89,6 +102,8 @@ public class EventService {
             event.setOrganizerEmail(updatedEvent.getOrganizerEmail());
             event.setOrganizerPhone(updatedEvent.getOrganizerPhone());
             event.setDescription(updatedEvent.getDescription());
+            // Fix: update ticketTypes from organizer input
+            event.setTicketTypes(updatedEvent.getTicketTypes());
             if (updatedEvent.getImage() != null) {
                 event.setImage(updatedEvent.getImage());
             }
@@ -204,7 +219,7 @@ public class EventService {
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found with ID: " + eventId));
 
-        if ("cancelled".equalsIgnoreCase(event.getStatus())) {
+        if (event.getStatus() == org.qrush.ticketing_system.entity.EventStatus.CANCELLED) {
             throw new IllegalStateException("Event is already cancelled");
         }
 
@@ -217,31 +232,28 @@ public class EventService {
         // Mark all tickets as refunded and notify users
         for (TicketEntity ticket : tickets) {
             if (!"refunded".equalsIgnoreCase(ticket.getStatus()) &&
-                    !"cancelled".equalsIgnoreCase(ticket.getStatus())) {
-
-                totalRefundAmount += ticket.getPrice();
-                ticketsRefunded++;
-
-                // Update ticket status
-                ticket.setStatus("refunded");
-                ticketRepository.save(ticket);
-
-                // Send notification to ticket holder
-                notificationService.createEventNotification(
-                        ticket.getUser().getUserID(),
-                        "warning",
-                        "Event Cancelled - Refund Issued",
-                        String.format("The event \"%s\" has been cancelled. Reason: %s. " +
-                                "A refund of ₱%.2f has been issued to your original payment method.",
-                                event.getName(),
-                                reason != null ? reason : "Unforeseen circumstances",
-                                ticket.getPrice()),
-                        eventId);
+                !"cancelled".equalsIgnoreCase(ticket.getStatus())) {
+            totalRefundAmount += ticket.getPrice();
+            ticketsRefunded++;
+            // Update ticket status
+            ticket.setStatus("refunded"); // Assuming ticket.status is still String
+            ticketRepository.save(ticket);
+            // Send notification to ticket holder
+            notificationService.createEventNotification(
+                ticket.getUser().getUserID(),
+                "warning",
+                "Event Cancelled - Refund Issued",
+                String.format("The event \"%s\" has been cancelled. Reason: %s. " +
+                    "A refund of ₱%.2f has been issued to your original payment method.",
+                    event.getName(),
+                    reason != null ? reason : "Unforeseen circumstances",
+                    ticket.getPrice()),
+                eventId);
             }
         }
 
         // Update event status
-        event.setStatus("cancelled");
+        event.setStatus(org.qrush.ticketing_system.entity.EventStatus.CANCELLED);
         event.setCancellationReason(reason != null ? reason : "Unforeseen circumstances");
         event.setCancelledAt(LocalDateTime.now());
         eventRepository.save(event);

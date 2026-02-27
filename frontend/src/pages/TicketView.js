@@ -183,7 +183,7 @@ const TicketView = () => {
       // Event title
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 28px Arial';
-      ctx.fillText(ticket.eventTitle || 'Event', 30, 50);
+      ctx.fillText(ticket.eventTitle, 30, 50);
       
       // Ticket number
       ctx.font = '16px Arial';
@@ -194,47 +194,22 @@ const TicketView = () => {
       ctx.font = 'bold 14px Arial';
       ctx.fillText(ticket.status, 30, 110);
       
-      // Draw QR code placeholder first
+      // Load and draw QR code
+      const qrImage = new Image();
+      qrImage.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        qrImage.onload = resolve;
+        qrImage.onerror = reject;
+        qrImage.src = ticket.qrCode;
+      });
+      
+      // Draw QR code centered
       const qrSize = 200;
       const qrX = (canvas.width - qrSize) / 2;
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(qrX - 20, 150, qrSize + 40, qrSize + 40);
-      
-      // Try to load QR code image
-      try {
-        const qrImage = new Image();
-        qrImage.crossOrigin = 'anonymous';
-        
-        await new Promise((resolve, reject) => {
-          qrImage.onload = resolve;
-          qrImage.onerror = reject;
-          // Use a timeout in case loading hangs
-          setTimeout(() => resolve(), 3000);
-          qrImage.src = ticket.qrCode;
-        });
-        
-        if (qrImage.complete && qrImage.naturalWidth > 0) {
-          ctx.drawImage(qrImage, qrX, 170, qrSize, qrSize);
-        } else {
-          // Draw placeholder text if QR fails
-          ctx.fillStyle = '#000000';
-          ctx.font = 'bold 16px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText('QR Code', canvas.width / 2, 270);
-          ctx.font = '12px Arial';
-          ctx.fillText(ticket.ticketNumber, canvas.width / 2, 290);
-          ctx.textAlign = 'left';
-        }
-      } catch {
-        // Draw placeholder if QR loading fails
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('QR Code', canvas.width / 2, 270);
-        ctx.font = '12px Arial';
-        ctx.fillText(ticket.ticketNumber, canvas.width / 2, 290);
-        ctx.textAlign = 'left';
-      }
+      ctx.drawImage(qrImage, qrX, 170, qrSize, qrSize);
       
       // Ticket details
       ctx.fillStyle = '#ffffff';
@@ -248,15 +223,15 @@ const TicketView = () => {
       ctx.fillStyle = '#9ca3af';
       
       // Date
-      ctx.fillText(`Date: ${formatDate(ticket.startDate)}`, 30, yPos);
+      ctx.fillText(`📅 ${formatDate(ticket.startDate)}`, 30, yPos);
       yPos += 25;
       
       // Time
-      ctx.fillText(`Time: ${formatTime(ticket.startDate)}`, 30, yPos);
+      ctx.fillText(`🕐 ${formatTime(ticket.startDate)}`, 30, yPos);
       yPos += 25;
       
       // Location
-      ctx.fillText(`Location: ${ticket.location}`, 30, yPos);
+      ctx.fillText(`📍 ${ticket.location}`, 30, yPos);
       yPos += 35;
       
       // Attendee info
@@ -267,9 +242,9 @@ const TicketView = () => {
       
       ctx.font = '14px Arial';
       ctx.fillStyle = '#9ca3af';
-      ctx.fillText(`Name: ${ticket.attendeeName}`, 30, yPos);
+      ctx.fillText(`👤 ${ticket.attendeeName}`, 30, yPos);
       yPos += 25;
-      ctx.fillText(`Email: ${ticket.attendeeEmail}`, 30, yPos);
+      ctx.fillText(`✉️ ${ticket.attendeeEmail}`, 30, yPos);
       yPos += 35;
       
       // Price
@@ -283,29 +258,13 @@ const TicketView = () => {
       ctx.fillText('Powered by QRush Ticketing', 30, canvas.height - 30);
       ctx.fillText('Show this QR code at the entrance', 30, canvas.height - 50);
       
-      // Convert to blob and download
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          toast.error('Failed to create image');
-          return;
-        }
-        
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${ticket.ticketNumber}_ticket.png`;
-        
-        // Append to body, click, then remove (more reliable on mobile)
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up the URL
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        
-        toast.success('Ticket downloaded!');
-      }, 'image/png');
+      // Download
+      const link = document.createElement('a');
+      link.download = `${ticket.ticketNumber}_${ticket.eventTitle.replace(/[^a-z0-9]/gi, '_')}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
       
+      toast.success('Ticket downloaded successfully!');
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Failed to download ticket. Please try again.');

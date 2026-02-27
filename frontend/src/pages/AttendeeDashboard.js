@@ -1,3 +1,4 @@
+
 /* global globalThis */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -28,6 +29,8 @@ const AttendeeDashboard = () => {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Search bar state for filtering tickets
+  const [ticketSearch, setTicketSearch] = useState("");
 
   const handleRefresh = () => {
     if (typeof globalThis !== 'undefined' && globalThis.location &&
@@ -105,7 +108,16 @@ const AttendeeDashboard = () => {
   }
 
   const totalSpent = dashboard.totalSpent ?? 0;
-  const upcomingTickets = dashboard.upcomingTickets ?? [];
+  // Filter tickets by search
+  const upcomingTickets = (dashboard.upcomingTickets ?? []).filter(ticket => {
+    if (!ticketSearch.trim()) return true;
+    const search = ticketSearch.toLowerCase();
+    return (
+      (ticket.eventTitle && ticket.eventTitle.toLowerCase().includes(search)) ||
+      (ticket.status && ticket.status.toLowerCase().includes(search)) ||
+      (ticket.eventStart && new Date(ticket.eventStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase().includes(search))
+    );
+  });
   const pastEvents = dashboard.pastEvents ?? [];
 
   const qrFromTicket = (ticket) => {
@@ -139,41 +151,22 @@ const AttendeeDashboard = () => {
       
       // Ticket number
       ctx.font = '14px Arial';
-      const ticketNum = ticket.ticketNumber || `TCK-${String(ticket.ticketId).padStart(6, '0')}`;
-      ctx.fillText(`Ticket: ${ticketNum}`, 20, 60);
+      ctx.fillText(`Ticket: ${ticket.ticketNumber || `TCK-${String(ticket.ticketId).padStart(6, '0')}`}`, 20, 60);
       
-      // Draw QR code area first
+      // Load QR code
+      const qrImage = new Image();
+      qrImage.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        qrImage.onload = resolve;
+        qrImage.onerror = reject;
+        qrImage.src = qrFromTicket(ticket);
+      });
+      
+      // Draw QR code
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(20, 100, 160, 160);
-      
-      // Try to load QR code
-      try {
-        const qrImage = new Image();
-        qrImage.crossOrigin = 'anonymous';
-        
-        await new Promise((resolve, reject) => {
-          qrImage.onload = resolve;
-          qrImage.onerror = reject;
-          setTimeout(() => resolve(), 3000);
-          qrImage.src = qrFromTicket(ticket);
-        });
-        
-        if (qrImage.complete && qrImage.naturalWidth > 0) {
-          ctx.drawImage(qrImage, 30, 110, 140, 140);
-        } else {
-          ctx.fillStyle = '#000000';
-          ctx.font = '12px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText('QR Code', 100, 180);
-          ctx.textAlign = 'left';
-        }
-      } catch {
-        ctx.fillStyle = '#000000';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('QR Code', 100, 180);
-        ctx.textAlign = 'left';
-      }
+      ctx.drawImage(qrImage, 30, 110, 140, 140);
       
       // Details on the right
       ctx.fillStyle = '#ffffff';
@@ -182,9 +175,9 @@ const AttendeeDashboard = () => {
       
       ctx.font = '14px Arial';
       ctx.fillStyle = '#9ca3af';
-      ctx.fillText(`Date: ${formatDate(ticket.eventDate)}`, 210, 150);
-      ctx.fillText(`Location: ${ticket.location || 'TBA'}`, 210, 175);
-      ctx.fillText(`Type: ${ticket.ticketType || 'General'}`, 210, 200);
+      ctx.fillText(`📅 ${formatDate(ticket.eventDate)}`, 210, 150);
+      ctx.fillText(`📍 ${ticket.location || 'TBA'}`, 210, 175);
+      ctx.fillText(`🎫 ${ticket.ticketType || 'General'}`, 210, 200);
       
       ctx.fillStyle = '#f97316';
       ctx.font = 'bold 18px Arial';
@@ -193,31 +186,16 @@ const AttendeeDashboard = () => {
       // Footer
       ctx.fillStyle = '#4b5563';
       ctx.font = '11px Arial';
-      ctx.fillText('Show this QR code at the entrance - Powered by QRush', 20, canvas.height - 20);
+      ctx.fillText('Show this QR code at the entrance • Powered by QRush', 20, canvas.height - 20);
       
-      // Convert to blob and download
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          toast.error('Failed to create image');
-          return;
-        }
-        
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${ticketNum}.png`;
-        
-        // Append to body, click, then remove (more reliable on mobile)
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up the URL
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        
-        toast.success('Ticket downloaded!');
-      }, 'image/png');
+      // Download
+      const link = document.createElement('a');
+      const ticketNum = ticket.ticketNumber || `TCK-${String(ticket.ticketId).padStart(6, '0')}`;
+      link.download = `${ticketNum}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
       
+      toast.success('Ticket downloaded!');
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Failed to download ticket');
@@ -331,14 +309,24 @@ const AttendeeDashboard = () => {
 
           {/* My Tickets Tab */}
           <TabsContent value="tickets" className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-2xl font-semibold text-white">My Tickets</h2>
-              <Link to="/events">
-                <Button className="gradient-orange text-black">
-                  <Ticket className="w-4 h-4 mr-2" />
-                  Browse More Events
-                </Button>
-              </Link>
+              <div className="flex flex-1 justify-end gap-2">
+                <input
+                  type="text"
+                  placeholder="Search tickets..."
+                  value={ticketSearch}
+                  onChange={e => setTicketSearch(e.target.value)}
+                  className="w-full sm:w-64 p-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none"
+                  style={{maxWidth:'320px'}}
+                />
+                <Link to="/events">
+                  <Button className="gradient-orange text-black">
+                    <Ticket className="w-4 h-4 mr-2" />
+                    Browse More Events
+                  </Button>
+                </Link>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">

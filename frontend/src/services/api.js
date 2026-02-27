@@ -14,7 +14,7 @@ class ApiService {
    */
   async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
-    
+
     // Default configuration for all requests
     const config = {
       headers: {
@@ -25,19 +25,30 @@ class ApiService {
 
     try {
       console.log(`Making API request to: ${url}`);
-      
+
       const response = await fetch(url, config);
-      
+
       // Handle non-successful HTTP responses
       if (!response.ok) {
         // Try to extract error message from response body
         const errorText = await response.text();
         throw new Error(errorText || `HTTP error! status: ${response.status}`);
       }
-      
-      // Parse and return JSON response for successful requests
-      return await response.json();
-      
+
+      // Handle empty or no-content responses
+      if (response.status === 204) {
+        return null;
+      }
+      const text = await response.text();
+      if (!text) {
+        return null;
+      }
+      try {
+        return JSON.parse(text);
+      } catch (err) {
+        // If not valid JSON, return as text
+        return text;
+      }
     } catch (error) {
       console.error('API request failed:', error);
       throw error;

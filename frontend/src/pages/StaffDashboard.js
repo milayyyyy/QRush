@@ -75,8 +75,17 @@ const StaffDashboard = () => {
       try {
         setLoading(true);
         const fetchedEvents = await apiService.getEvents();
-        setEvents(fetchedEvents);
-        const defaultEventId = fetchedEvents[0]?.eventID ?? null;
+        // Only include available events (not cancelled, not ended)
+        const now = new Date();
+        const availableEvents = fetchedEvents.filter(event => {
+          // Exclude cancelled events
+          if ((event.status || '').toLowerCase() === 'cancelled') return false;
+          // Exclude ended events (eventEnd in the past)
+          if (event.eventEnd && new Date(event.eventEnd) < now) return false;
+          return true;
+        });
+        setEvents(availableEvents);
+        const defaultEventId = availableEvents[0]?.eventID ?? null;
         setSelectedEventId(defaultEventId);
         if (defaultEventId) {
           await fetchDashboard(defaultEventId, { showSpinner: false });

@@ -12,6 +12,21 @@ import { useAuth } from '../App';
 const viewedEventsThisSession = new Set();
 
 const EventCard = ({ event }) => {
+    // Parse ticketTypes JSON and get the lowest price
+    let displayPrice = event.ticketPrice;
+    if (event.ticketTypes) {
+      try {
+        const types = JSON.parse(event.ticketTypes);
+        if (Array.isArray(types) && types.length > 0) {
+          const prices = types.map(t => Number(t.price)).filter(p => !isNaN(p));
+          if (prices.length > 0) {
+            displayPrice = Math.min(...prices);
+          }
+        }
+      } catch (e) {
+        // Ignore parse errors, fallback to ticketPrice
+      }
+    }
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -42,6 +57,16 @@ const EventCard = ({ event }) => {
   };
 
   const availability = getAvailabilityStatus(event.ticketsSold, event.capacity);
+
+  // Status badge color and text
+  const statusBadge = (() => {
+    switch (event.status) {
+      case 'ENDED': return { text: 'Ended', color: 'bg-gray-600/20 text-gray-400' };
+      case 'CANCELLED': return { text: 'Cancelled', color: 'bg-red-600/20 text-red-400' };
+      case 'ARCHIVED': return { text: 'Archived', color: 'bg-yellow-600/20 text-yellow-400' };
+      default: return null;
+    }
+  })();
   
 
   return (
@@ -58,10 +83,16 @@ const EventCard = ({ event }) => {
             <span className="text-orange-300 font-semibold">Add an event image to highlight this listing</span>
           </div>
         )}
-        <div className="absolute top-4 left-4">
-          <Badge className={availability.color}>
-            {availability.text}
-          </Badge>
+        <div className="absolute top-4 left-4 flex flex-col gap-2">
+          {/* Only show 'Available' badge if not ENDED */}
+          {event.status !== 'ENDED' && (
+            <Badge className={availability.color}>
+              {availability.text}
+            </Badge>
+          )}
+          {statusBadge && (
+            <Badge className={statusBadge.color}>{statusBadge.text}</Badge>
+          )}
         </div>
         {event.rating && (
           <div className="absolute top-4 right-4">
@@ -105,9 +136,9 @@ const EventCard = ({ event }) => {
           <div className="flex items-center justify-between pt-4 border-t border-orange-600/20">
             <div>
               <span className="text-2xl font-bold text-white">
-                {event.ticketPrice === 0 ? 'Free' : `₱${event.ticketPrice}`}
+                {displayPrice === 0 ? 'Free' : `₱${displayPrice}`}
               </span>
-              {event.ticketPrice > 0 && (
+              {displayPrice > 0 && (
                 <span className="text-sm text-gray-500 ml-1">per ticket</span>
               )}
             </div>
@@ -115,23 +146,19 @@ const EventCard = ({ event }) => {
               className="gradient-orange text-black hover:opacity-90"
               onClick={() => {
                 const eventKey = `${event.eventID}-${user?.id || 'anonymous'}`;
-                
-                // Only track if not already viewed in this session
                 if (!viewedEventsThisSession.has(eventKey)) {
                   viewedEventsThisSession.add(eventKey);
-                  // Fire and forget - don't wait for response
                   apiService.trackEventView(event.eventID, {
                     userId: user?.id || null,
                     userRole: user?.role || null
                   }).catch(() => {
-                    // If tracking fails, allow retry next time
                     viewedEventsThisSession.delete(eventKey);
                   });
                 }
-                
-                // Navigate immediately
                 navigate(`/events/${event.eventID}`);
               }}
+              disabled={event.status !== 'AVAILABLE'}
+              title={event.status === 'AVAILABLE' ? undefined : 'Purchasing disabled for this event'}
             >
               <Ticket className="w-4 h-4 mr-2" />
               View Details
@@ -163,5 +190,7 @@ EventCard.propTypes = {
     organizer: PropTypes.string,
     rating: PropTypes.number,
     image: PropTypes.string,
+    status: PropTypes.string,
+    ticketsSold: PropTypes.number,
   }).isRequired,
 };
