@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
-import { isDemoAccount, mockOrganizerDashboard, mockEvents } from '../lib/demoData';
+import { isDemoAccount, mockOrganizerDashboard } from '../lib/demoData';
 
 const ORGANIZER_PROFILE_STORAGE_KEY = 'qrush_organizer_profile';
 
