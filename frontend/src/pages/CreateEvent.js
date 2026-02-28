@@ -24,6 +24,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '../App';
 import { apiService } from '../services/api';
+import { isDemoAccount } from '../lib/demoData';
 
 let uniqueIdCounter = 0;
 
@@ -32,6 +33,42 @@ const generateUniqueId = (prefix = 'id') => {
   const timePart = Date.now().toString(36);
   const counterPart = uniqueIdCounter.toString(36);
   return `${prefix}-${timePart}-${counterPart}`;
+};
+
+// Local storage helpers for demo events
+const DEMO_EVENTS_KEY = 'qrush_demo_events';
+
+const getDemoEvents = () => {
+  try {
+    const raw = localStorage.getItem(DEMO_EVENTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.warn('Failed to parse demo events', e);
+    return [];
+  }
+};
+
+const saveDemoEvents = (events) => {
+  try {
+    localStorage.setItem(DEMO_EVENTS_KEY, JSON.stringify(events));
+  } catch (e) {
+    console.warn('Failed to save demo events', e);
+  }
+};
+
+const findDemoEventById = (id) => {
+  return getDemoEvents().find(e => e.eventID === id);
+};
+
+const upsertDemoEvent = (event) => {
+  const events = getDemoEvents();
+  const idx = events.findIndex(e => e.eventID === event.eventID);
+  if (idx >= 0) {
+    events[idx] = event;
+  } else {
+    events.push(event);
+  }
+  saveDemoEvents(events);
 };
 
 const createAgendaItem = (overrides = {}) => ({
@@ -315,7 +352,20 @@ const CreateEvent = () => {
     const loadEvent = async () => {
       try {
         setIsInitializing(true);
-        const data = await apiService.getEvent(eventId, { trackView: false });
+        let data;
+
+        // Demo account handling: load from localStorage instead of API
+        if (isDemoAccount(user?.id) && eventId && eventId.startsWith('demo-')) {
+          data = findDemoEventById(eventId);
+          if (!data) {
+            toast.error('Demo event not found for editing.');
+            navigate('/dashboard');
+            return;
+          }
+        } else {
+          data = await apiService.getEvent(eventId, { trackView: false });
+        }
+
         if (!data) {
           toast.error('We could not find the event you want to edit.');
           navigate('/dashboard');
@@ -585,12 +635,20 @@ const CreateEvent = () => {
     };
 
     try {
-      if (isEditMode) {
-        await apiService.updateEvent(eventId, payload);
-        toast.success('Event updated successfully!');
+      if (isDemoAccount(user?.id)) {
+        // assign an id for new demo event or use existing
+        const demoId = isEditMode ? eventId : `demo-${Date.now().toString(36)}`;
+        const demoEvent = { eventID: demoId, ...payload };
+        upsertDemoEvent(demoEvent);
+        toast.success(isEditMode ? 'Demo event updated locally!' : 'Demo event created locally!');
       } else {
-        await apiService.createEvent(payload);
-        toast.success('Event published successfully!');
+        if (isEditMode) {
+          await apiService.updateEvent(eventId, payload);
+          toast.success('Event updated successfully!');
+        } else {
+          await apiService.createEvent(payload);
+          toast.success('Event published successfully!');
+        }
       }
       navigate('/dashboard');
     } catch (err) {
