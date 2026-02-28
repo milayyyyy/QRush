@@ -1,7 +1,10 @@
 /**
  * API Service for communicating with Spring Boot backend
  * Handles all HTTP requests to the backend server
+ * Also supports Supabase for real accounts
  */
+import { supabase, supabaseConfig } from '../config/supabase';
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
 class ApiService {
@@ -506,6 +509,73 @@ class ApiService {
     return this.request(`/attendance/${logId}`, {
       method: 'DELETE',
     });
+  }
+
+  // ==================== SUPABASE AUTHENTICATION METHODS ====================
+
+  /**
+   * Sign up with Supabase
+   * @param {object} userData - User data with email and password
+   * @returns {Promise} - Auth response
+   */
+  async supabaseSignup(userData) {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+    const { data, error } = await supabase.auth.signUp({
+      email: userData.email,
+      password: userData.password,
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Login with Supabase
+   * @param {object} credentials - Email and password
+   * @returns {Promise} - Auth response
+   */
+  async supabaseLogin(credentials) {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password,
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Get current Supabase session
+   * @returns {Promise} - Session or null
+   */
+  async getSupabaseSession() {
+    if (!supabase) return null;
+    const { data, error } = await supabase.auth.getSession();
+    if (error) console.warn('Failed to get session:', error);
+    return data?.session || null;
+  }
+
+  /**
+   * Sign out from Supabase
+   * @returns {Promise} - Sign out response
+   */
+  async supabaseSignout() {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  }
+
+  /**
+   * Check if Supabase is available
+   * @returns {boolean} - True if Supabase is configured
+   */
+  isSupabaseAvailable() {
+    return supabaseConfig.isConfigured && !!supabase;
   }
 
   // Additional API methods can be added here as needed

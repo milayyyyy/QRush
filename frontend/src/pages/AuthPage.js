@@ -178,14 +178,60 @@ const AuthPage = () => {
 
     try {
       let response;
+      let userData;
       
       if (isLogin) {
-        // Existing user authentication flow
-        response = await apiService.login({
-          email: email,
-          password: password
-        });
-      } else {
+        // Try Supabase first if available, then fall back to Spring Boot
+        if (apiService.isSupabaseAvailable()) {
+          try {
+            response = await apiService.supabaseLogin({
+              email: email,
+              password: password
+            });
+            
+            // Extract user data from Supabase response
+            userData = {
+              id: response.user.id,
+              email: response.user.email,
+              name: response.user.user_metadata?.name || response.user.email.split('@')[0],
+              role: response.user.user_metadata?.role || 'attendee',
+              contact: response.user.user_metadata?.contact || '',
+              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${response.user.email}`
+            };
+          } catch (supabaseError) {
+            console.warn('Supabase login failed, trying backend:', supabaseError);
+            // Fall back to Spring Boot backend
+            response = await apiService.login({
+              email: email,
+              password: password
+            });
+            userData = {
+              id: response.userID,
+              email: response.email,
+              name: response.name,
+              role: response.role.toLowerCase(),
+              contact: response.contact,
+              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${response.email}`
+            };
+          }
+        } else {
+          // Use Spring Boot backend
+          response = await apiService.login({
+            email: email,
+            password: password
+          });
+          userData = {
+            id: response.userID,
+            email: response.email,
+            name: response.name,
+            role: response.role.toLowerCase(),
+            contact: response.contact,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${response.email}`
+          };
+        }
+      }
+
+      if (!isLogin) {
         // New user registration with comprehensive validation
         if (!selectedRole) {
           toast.error('Please select your role');
@@ -225,7 +271,31 @@ const AuthPage = () => {
           return;
         }
 
-        // Registration data payload
+        // Try Supabase first if available
+        if (apiService.isSupabaseAvailable()) {
+          try {
+            await apiService.supabaseSignup({
+              email: email,
+              password: password
+            });
+            toast.success('Account created successfully! Please sign in.');
+            setName('');
+            setEmail('');
+            setPassword('');
+            setContact('');
+            setBirthdate('');
+            setGender('');
+            setSelectedRole('');
+            setTouchedFields({});
+            setCurrentTab('login');
+            setIsLoading(false);
+            return;
+          } catch (supabaseError) {
+            console.warn('Supabase signup failed, trying backend:', supabaseError);
+          }
+        }
+        
+        // Use Spring Boot backend for registration
         response = await apiService.signup({
           name: name,
           email: email,
@@ -235,13 +305,8 @@ const AuthPage = () => {
           birthdate: birthdate,
           gender: gender
         });
-      }
-
-      if (!isLogin) {
-        // Signup flow
-        toast.success(response.message); // Signup successful message
-
-        // Clear all signup inputs
+        
+        toast.success(response.message);
         setName('');
         setEmail('');
         setPassword('');
@@ -250,26 +315,17 @@ const AuthPage = () => {
         setGender('');
         setSelectedRole('');
         setTouchedFields({});
-
-        setCurrentTab('login');        // redirect user to login tab
-
-        
+        setCurrentTab('login');
+        setIsLoading(false);
         return;
       }
 
-      // Login flow (keep the existing login code here)
-      const userData = {
-        id: response.userID,
-        email: response.email,
-        name: response.name,
-        role: response.role.toLowerCase(),
-        contact: response.contact,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${response.email}`
-      };
-
-      login(userData);
-      toast.success(`Welcome back, ${userData.name}!`);
-      navigate('/dashboard');
+      // Login flow
+      if (userData) {
+        login(userData);
+        toast.success(`Welcome back, ${userData.name}!`);
+        navigate('/dashboard');
+      }
       
     } catch (error) {
       console.error('Authentication error:', error);
