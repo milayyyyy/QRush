@@ -19,11 +19,12 @@ import {
   Share,
   History,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Trash2
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
-import { isDemoAccount, mockAttendeeDashboard } from '../lib/demoData';
+import { isDemoAccount, mockAttendeeDashboard, getDemoEvents, deleteDemoEvent } from '../lib/demoData';
 
 const AttendeeDashboard = () => {
   const { user } = useAuth();
@@ -42,6 +43,36 @@ const AttendeeDashboard = () => {
     toast.error('Refresh is not supported in this environment.');
   };
 
+  const handleRemoveDemoEvent = async (eventId) => {
+    if (!eventId) return;
+    deleteDemoEvent(eventId);
+    toast.success('Demo event removed');
+    // reload data
+    if (user?.id) {
+      setLoading(true);
+      try {
+        const events = getDemoEvents();
+        setDashboard(prev => ({
+          ...prev,
+          upcomingTickets: events.map(e => ({
+            ticketID: e.eventID,
+            ticketId: e.eventID,
+            eventTitle: e.title,
+            eventStart: e.eventStart,
+            location: e.location,
+            category: e.category,
+            seatNumber: 'GA',
+            ticketType: 'General',
+            status: 'VALID',
+            qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(e.eventID)}`
+          }))
+        }));
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   useEffect(() => {
     const fetchDashboard = async () => {
       if (!user?.id) {
@@ -53,9 +84,26 @@ const AttendeeDashboard = () => {
         let data;
         // Check if this is a demo account
         if (isDemoAccount(user.id)) {
-          // Use mock data for demo accounts
-          data = mockAttendeeDashboard;
+          // Derive attendee dashboard from demo events so any changes propagate
+          const events = getDemoEvents();
           toast.info('Using demo data - no backend required!');
+          data = {
+            ...mockAttendeeDashboard,
+            upcomingTickets: events.map(e => ({
+              ticketID: e.eventID,
+              ticketId: e.eventID,
+              eventTitle: e.title,
+              eventStart: e.eventStart,
+              location: e.location,
+              category: e.category,
+              seatNumber: 'GA',
+              ticketType: 'General',
+              status: 'VALID',
+              qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(e.eventID)}`
+            })),
+            pastTickets: [],
+            eventHistory: []
+          };
         } else {
           // Fetch real data from API
           data = await apiService.getAttendeeDashboard(user.id);
@@ -432,6 +480,12 @@ const AttendeeDashboard = () => {
                               : 'View Full Ticket'}
                           </Button>
                         </Link>
+                        {isDemoAccount(user.id) && (
+                          <Button variant="outline" size="sm" onClick={() => handleRemoveDemoEvent(ticket.ticketId)}
+                                  className="text-red-500 hover:text-red-400 hover:bg-red-900/20 border-red-500/50">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                         {ticket.status !== 'refunded' && ticket.eventStatus !== 'cancelled' && (
                           <>
                             <Button variant="outline" size="sm" onClick={() => handleDownloadTicket(ticket)}>

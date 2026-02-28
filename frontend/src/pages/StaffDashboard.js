@@ -17,11 +17,12 @@ import {
   Scan,
   AlertCircle,
   Calendar,
-  MapPin
+  MapPin,
+  Trash2
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
-import { isDemoAccount, mockStaffDashboard, mockEvents } from '../lib/demoData';
+import { isDemoAccount, mockStaffDashboard, getDemoEvents, deleteDemoEvent } from '../lib/demoData';
 
 const BULK_PLACEHOLDER = [
   'Enter ticket numbers, one per line',
@@ -61,8 +62,16 @@ const StaffDashboard = () => {
       let data;
       // Check if this is a demo account
       if (isDemoAccount(user?.id)) {
-        // Use mock data for demo accounts
-        data = mockStaffDashboard;
+        // Build simple metrics from the demo event so it updates when events change
+        const event = getDemoEvents().find(e => e.eventID === eventId);
+        data = {
+          ...mockStaffDashboard,
+          eventName: event?.title || 'Demo event',
+          totalTickets: event?.capacity || 0,
+          pending: event ? Math.floor((event.capacity || 0) * 0.5) : 0,
+          checkedIn: event ? Math.floor((event.capacity || 0) * 0.2) : 0,
+          invalid: 0,
+        };
       } else {
         // Fetch real data from API
         data = await apiService.getStaffDashboard(eventId);
@@ -89,8 +98,8 @@ const StaffDashboard = () => {
         let fetchedEvents;
         // Check if this is a demo account
         if (isDemoAccount(user?.id)) {
-          // Use mock events for demo accounts
-          fetchedEvents = mockEvents;
+          // Use demo events from storage so they stay in sync with organizer
+          fetchedEvents = getDemoEvents();
           toast.info('Using demo data - no backend required!');
         } else {
           // Fetch real events from API
@@ -450,18 +459,40 @@ const StaffDashboard = () => {
         {events.length > 0 ? (
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-300 mb-2" htmlFor={eventSelectId}>Select Event</label>
-            <select
-              id={eventSelectId}
-              value={selectedEventId ?? ''}
-              onChange={handleEventChange}
-              className="w-full max-w-sm p-2 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            >
-              {events.map((event) => (
-                <option key={event.eventID} value={event.eventID}>
-                  {event.name}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                id={eventSelectId}
+                value={selectedEventId ?? ''}
+                onChange={handleEventChange}
+                className="w-full max-w-sm p-2 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                {events.map((event) => (
+                  <option key={event.eventID} value={event.eventID}>
+                    {event.name}
+                  </option>
+                ))}
+              </select>
+              {isDemoAccount(user.id) && selectedEventId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    deleteDemoEvent(selectedEventId);
+                    toast.success('Demo event removed');
+                    // re-initialize events list
+                    const fetched = getDemoEvents().filter(e => (e.status || '').toLowerCase() !== 'cancelled');
+                    setEvents(fetched);
+                    const newDefault = fetched[0]?.eventID ?? null;
+                    setSelectedEventId(newDefault);
+                    if (newDefault) await fetchDashboard(newDefault);
+                  }}
+                  className="text-red-500 hover:text-red-400 hover:bg-red-900/20 border-red-500/50"
+                  title="Delete this demo event"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
         ) : (
           <Card className="mb-8 bg-gray-900 border-orange-600/20">

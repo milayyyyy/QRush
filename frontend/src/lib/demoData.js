@@ -12,8 +12,10 @@ const DEMO_EVENTS_KEY = 'qrush_demo_events';
 
 export const getDemoEvents = () => {
   try {
-    // always reset storage to current mockEvents so previous demo events are removed
-    localStorage.setItem(DEMO_EVENTS_KEY, JSON.stringify(mockEvents));
+    // initialize storage only once if empty
+    if (!localStorage.getItem(DEMO_EVENTS_KEY)) {
+      localStorage.setItem(DEMO_EVENTS_KEY, JSON.stringify(mockEvents));
+    }
     const raw = localStorage.getItem(DEMO_EVENTS_KEY);
     const events = raw ? JSON.parse(raw) : [];
     // ensure each event has a title property for UI
@@ -55,6 +57,14 @@ export const upsertDemoEvent = (event) => {
   }
   saveDemoEvents(events);
 };
+
+// remove an event by id from storage
+export const deleteDemoEvent = (id) => {
+  if (!id) return;
+  const events = getDemoEvents().filter(e => e.eventID !== id);
+  saveDemoEvents(events);
+};
+
 
 // Mock events for all demo users (replace existing demo content)
 export const mockEvents = [

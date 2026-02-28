@@ -17,11 +17,12 @@ import {
   Settings,
   Download,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
-import { isDemoAccount, mockOrganizerDashboard } from '../lib/demoData';
+import { isDemoAccount, mockOrganizerDashboard, getDemoEvents, deleteDemoEvent } from '../lib/demoData';
 
 const ORGANIZER_PROFILE_STORAGE_KEY = 'qrush_organizer_profile';
 
@@ -107,8 +108,25 @@ const OrganizerDashboard = () => {
       let data;
       // Check if this is a demo account
       if (isDemoAccount(user.id)) {
-        // Use mock data for demo accounts
-        data = mockOrganizerDashboard;
+        // Build dynamic dashboard data from demo events
+        const events = getDemoEvents();
+        const totalEvents = events.length;
+        const totalTicketsSold = events.reduce((sum, e) => sum + (e.ticketsSold || 0), 0);
+        const totalRevenue = events.reduce((sum, e) => sum + (e.revenue || 0), 0);
+        const averageAttendance = totalEvents
+          ? Math.round(
+              (events.reduce((sum, e) => sum + ((e.ticketsSold || 0) / (e.capacity || 1)), 0) / totalEvents) *
+                100
+            )
+          : 0;
+        data = {
+          ...mockOrganizerDashboard,
+          events,
+          totalEvents,
+          totalTicketsSold,
+          totalRevenue,
+          averageAttendance
+        };
         toast.info('Using demo data - no backend required!');
       } else {
         // Fetch real data from API
@@ -258,9 +276,29 @@ const OrganizerDashboard = () => {
   };
 
   const handleCancelEventClick = (event) => {
+    if (isDemoAccount(user.id)) {
+      // demo delete instead
+      handleDeleteEvent(event.eventId);
+      return;
+    }
     setEventToCancel(event);
     setCancelReason('');
     setCancelModalOpen(true);
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (!eventId) return;
+    if (isDemoAccount(user.id)) {
+      deleteDemoEvent(eventId);
+      toast.success('Demo event deleted');
+      await fetchDashboard();
+    } else {
+      // fallback to cancel flow
+      const evt = (dashboard?.events ?? []).find(e => e.eventId === eventId);
+      if (evt) {
+        handleCancelEventClick(evt);
+      }
+    }
   };
 
   const handleConfirmCancelEvent = async () => {
@@ -642,14 +680,26 @@ const OrganizerDashboard = () => {
                             <Button variant="outline" size="sm" onClick={() => handleEventSettings(event)}>
                               <Settings className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleCancelEventClick(event)}
-                              className="text-red-500 hover:text-red-400 hover:bg-red-900/20 border-red-500/50"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </Button>
+                            {isDemoAccount(user.id) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteEvent(event.eventId)}
+                                className="text-red-500 hover:text-red-400 hover:bg-red-900/20 border-red-500/50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {!isDemoAccount(user.id) && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleCancelEventClick(event)}
+                                className="text-red-500 hover:text-red-400 hover:bg-red-900/20 border-red-500/50"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>

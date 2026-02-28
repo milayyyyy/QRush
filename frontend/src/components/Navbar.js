@@ -311,6 +311,9 @@ const Navbar = () => {
               <>
                 <NavLink to="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</NavLink>
                 <NavLink to="/events" onClick={() => setIsMobileMenuOpen(false)}>Events</NavLink>
+                {isDemoAccount(user?.id) && (
+                  <NavLink to="/create-event" onClick={() => setIsMobileMenuOpen(false)}>New Event</NavLink>
+                )}
               </>
             ) : (
               <>
@@ -511,6 +514,9 @@ const Navbar = () => {
                 <>
                   <NavLink to="/dashboard" className="block" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</NavLink>
                   <NavLink to="/events" className="block" onClick={() => setIsMobileMenuOpen(false)}>Events</NavLink>
+                  {isDemoAccount(user?.id) && (
+                    <NavLink to="/create-event" className="block" onClick={() => setIsMobileMenuOpen(false)}>New Event</NavLink>
+                  )}
                 </>
               ) : (
                 <>
