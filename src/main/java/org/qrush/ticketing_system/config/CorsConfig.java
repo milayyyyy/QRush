@@ -1,6 +1,5 @@
 package org.qrush.ticketing_system.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -8,37 +7,46 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
 import java.util.Arrays;
-import java.util.List;
-import java.util.ArrayList;
 
 @Configuration
 public class CorsConfig {
 
-    @Value("${app.frontend.url:http://localhost:3000}")
-    private String frontendUrl;
-
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
+
+        // Allow credentials (for cookies/auth)
         config.setAllowCredentials(true);
 
-        // Allow localhost for development and production URLs
-        List<String> allowedOrigins = new ArrayList<>();
-        allowedOrigins.add("http://localhost:3000");
-        allowedOrigins.add("https://q-rush.vercel.app");
-        if (frontendUrl != null && !frontendUrl.equals("http://localhost:3000")
-                && !frontendUrl.equals("https://q-rush.vercel.app")) {
-            allowedOrigins.add(frontendUrl);
-        }
-        config.setAllowedOrigins(allowedOrigins);
+        // Explicitly allow all necessary origins
+        config.setAllowedOrigins(Arrays.asList(
+                "http://localhost:3000",
+                "http://localhost:3001",
+                "http://localhost:5173",
+                "https://q-rush.vercel.app"));
 
-        config.setAllowedHeaders(Arrays.asList("Origin", "Content-Type", "Accept", "Authorization",
-                "X-Requested-With", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        // Allow all necessary headers
+        config.setAllowedHeaders(Arrays.asList(
+                "*" // Allow all headers - simpler for development
+        ));
+
+        // Allow all necessary methods
+        config.setAllowedMethods(Arrays.asList(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS",
+                "PATCH",
+                "HEAD"));
+
+        // Set cache time for preflight requests
         config.setMaxAge(3600L);
 
+        // Register CORS for all API endpoints
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/", config);
 
         return new CorsFilter(source);
     }
