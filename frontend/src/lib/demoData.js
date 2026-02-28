@@ -15,7 +15,12 @@ export const getDemoEvents = () => {
     // always reset storage to current mockEvents so previous demo events are removed
     localStorage.setItem(DEMO_EVENTS_KEY, JSON.stringify(mockEvents));
     const raw = localStorage.getItem(DEMO_EVENTS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const events = raw ? JSON.parse(raw) : [];
+    // ensure each event has a title property for UI
+    return events.map(e => ({
+      ...e,
+      title: e.title || e.name || '',
+    }));
   } catch (e) {
     console.warn('Failed to parse demo events', e);
     return [];
@@ -35,11 +40,18 @@ export const findDemoEventById = (id) => {
 };
 
 export const upsertDemoEvent = (event) => {
+  // ensure title exists
+  event = {
+    ...event,
+    title: event.title || event.name || ''
+  };
+
   const events = getDemoEvents();
   const idx = events.findIndex(e => e.eventID === event.eventID);
   if (idx >= 0) {
     events[idx] = event;
-  } else {
+  } title: 'Midnight Groove: Live R&B x Afrobeat Experience',
+    else {
     events.push(event);
   }
   saveDemoEvents(events);
