@@ -12,6 +12,8 @@ const DEMO_EVENTS_KEY = 'qrush_demo_events';
 
 export const getDemoEvents = () => {
   try {
+    // always reset storage to current mockEvents so previous demo events are removed
+    localStorage.setItem(DEMO_EVENTS_KEY, JSON.stringify(mockEvents));
     const raw = localStorage.getItem(DEMO_EVENTS_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
@@ -43,55 +45,23 @@ export const upsertDemoEvent = (event) => {
   saveDemoEvents(events);
 };
 
-// Mock events for all demo users
+// Mock events for all demo users (replace existing demo content)
 export const mockEvents = [
   {
-    eventID: 'evt-001',
-    name: 'Tech Conference 2026',
-    description: 'Annual tech conference featuring industry leaders',
-    category: 'Technology',
-    eventStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    eventEnd: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(),
-    location: 'Convention Center, Manila',
-    capacity: 500,
-    registered: 380,
-    ticketPrice: 1500,
-    image: 'https://images.unsplash.com/photo-1540575467063-178f50c2fe5e?w=500&h=300&fit=crop',
+    eventID: 'demo-midnight-groove-001',
+    name: 'Midnight Groove: Live R&B x Afrobeat Experience',
+    description: 'Midnight Groove is a live music event bringing together the smooth sounds of R&B and the vibrant rhythm of Afrobeat. This event features talented local artists delivering soulful vocals, engaging stage presence, and immersive musical performances.\n\nAttendees will enjoy:\n\n• Live performances from rising R&B and Afrobeat artists\n• Chill and intimate atmosphere with immersive sound\n• Networking opportunities with music lovers and creatives\n• Exclusive live debut of original songs\n\nWhether you\'re a fan of smooth R&B melodies or energetic Afrobeat rhythms, Midnight Groove offers a unique experience you won\'t forget.\n\nPerfect for music lovers, creators, and anyone who wants to enjoy a night of pure vibe and sound.',
+    category: 'Music',
+    eventStart: '2026-03-15T19:00:00',
+    eventEnd: '2026-03-15T23:00:00',
+    location: 'Pulse Lounge Cebu, Mango Avenue, Cebu City, Cebu, 6000, Philippines',
+    capacity: 100,
+    registered: 0,
+    ticketPrice: 100,
+    image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a',
     status: 'AVAILABLE',
-    rating: 4.5,
-    ticketsSold: 380
-  },
-  {
-    eventID: 'evt-002',
-    name: 'Music Festival 2026',
-    description: 'Summer music festival with top artists',
-    category: 'Entertainment',
-    eventStart: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    eventEnd: new Date(Date.now() + 17 * 24 * 60 * 60 * 1000).toISOString(),
-    location: 'Rizal Park, Manila',
-    capacity: 2000,
-    registered: 1200,
-    ticketPrice: 2500,
-    image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&h=300&fit=crop',
-    status: 'AVAILABLE',
-    rating: 4.8,
-    ticketsSold: 1200
-  },
-  {
-    eventID: 'evt-003',
-    name: 'Business Networking Breakfast',
-    description: 'Connect with business professionals over breakfast',
-    category: 'Business',
-    eventStart: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    eventEnd: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000).toISOString(),
-    location: 'Manila Hotel, Manila',
-    capacity: 150,
-    registered: 145,
-    ticketPrice: 800,
-    image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop',
-    status: 'AVAILABLE',
-    rating: 4.2,
-    ticketsSold: 145
+    rating: null,
+    ticketsSold: 0
   }
 ];
 
