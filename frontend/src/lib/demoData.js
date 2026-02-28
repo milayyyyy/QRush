@@ -7,6 +7,42 @@ export const isDemoAccount = (userId) => {
   return userId && userId.startsWith('demo-');
 };
 
+// Local storage helpers for demo events
+const DEMO_EVENTS_KEY = 'qrush_demo_events';
+
+export const getDemoEvents = () => {
+  try {
+    const raw = localStorage.getItem(DEMO_EVENTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.warn('Failed to parse demo events', e);
+    return [];
+  }
+};
+
+export const saveDemoEvents = (events) => {
+  try {
+    localStorage.setItem(DEMO_EVENTS_KEY, JSON.stringify(events));
+  } catch (e) {
+    console.warn('Failed to save demo events', e);
+  }
+};
+
+export const findDemoEventById = (id) => {
+  return getDemoEvents().find(e => e.eventID === id);
+};
+
+export const upsertDemoEvent = (event) => {
+  const events = getDemoEvents();
+  const idx = events.findIndex(e => e.eventID === event.eventID);
+  if (idx >= 0) {
+    events[idx] = event;
+  } else {
+    events.push(event);
+  }
+  saveDemoEvents(events);
+};
+
 // Mock events for all demo users
 export const mockEvents = [
   {
