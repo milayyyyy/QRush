@@ -50,8 +50,7 @@ export const upsertDemoEvent = (event) => {
   const idx = events.findIndex(e => e.eventID === event.eventID);
   if (idx >= 0) {
     events[idx] = event;
-  } title: 'Midnight Groove: Live R&B x Afrobeat Experience',
-    else {
+  } else {
     events.push(event);
   }
   saveDemoEvents(events);
