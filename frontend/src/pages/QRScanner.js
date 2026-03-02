@@ -111,8 +111,9 @@ const QRScanner = () => {
       }
     } catch (error) {
       console.error('Ticket scan failed', error);
-      setScannerMessage('Unable to validate ticket. Please try again.');
-      toast.error('Unable to validate ticket. Please try again.');
+      const msg = error?.message || 'Unable to validate ticket. Please try again.';
+      setScannerMessage(msg);
+      toast.error(msg);
     } finally {
       setIsProcessing(false);
       // Don't stop scanning - allow continuous scanning

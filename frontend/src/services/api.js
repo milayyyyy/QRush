@@ -383,15 +383,23 @@ class ApiService {
   }
 
   async scanTicket({ qrCode, eventId, staffId }) {
-    let query = supabase.from('tickets').select('*').eq('qr_code', qrCode);
-    if (eventId && !isNaN(Number(eventId))) {
-      query = query.eq('event_id', Number(eventId));
+    let query;
+    // Support display ticket number format: TCK-000001
+    if (qrCode && /^TCK-\d+$/i.test(qrCode.trim())) {
+      const ticketId = parseInt(qrCode.trim().replace(/^TCK-/i, ''), 10);
+      query = supabase.from('tickets').select('*').eq('ticket_id', ticketId);
+    } else {
+      query = supabase.from('tickets').select('*').eq('qr_code', qrCode.trim());
+      if (eventId && !isNaN(Number(eventId))) {
+        query = query.eq('event_id', Number(eventId));
+      }
     }
     const { data: ticket, error: findError } = await query.maybeSingle();
 
-    if (findError || !ticket) throw new Error('Ticket not found');
-    if (ticket.status === 'USED') throw new Error('Ticket already used');
-    if (ticket.status !== 'VALID') throw new Error(`Ticket is ${ticket.status}`);
+    if (findError) throw new Error(`Lookup failed: ${findError.message}`);
+    if (!ticket) throw new Error('Ticket not found');
+    if (ticket.status === 'USED') throw new Error('Ticket already used — already checked in');
+    if (ticket.status !== 'VALID') throw new Error(`Ticket cannot be scanned (status: ${ticket.status})`);
 
     const { data: updated, error: updateError } = await supabase
       .from('tickets')
