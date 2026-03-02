@@ -327,11 +327,13 @@ class ApiService {
 
   async trackEventView(eventId, options = {}) {
     const { userId = null, userRole = null } = options;
-    await supabase.from('event_views').insert([{
-      event_id: Number(eventId),
-      user_id: userId ? Number(userId) : null,
-      user_role: userRole || null,
-    }]).maybeSingle().catch(() => null);
+    try {
+      await supabase.from('event_views').insert([{
+        event_id: Number(eventId),
+        user_id: userId ? Number(userId) : null,
+        user_role: userRole || null,
+      }]);
+    } catch (_) { /* non-critical */ }
     return null;
   }
 
