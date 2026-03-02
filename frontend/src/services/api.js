@@ -353,23 +353,20 @@ class ApiService {
     const { data, error } = await supabase.from('tickets').insert(rows).select();
     throwIf(error);
 
-    // Update tickets_sold count
-    await supabase
-      .from('events')
-      .update({ tickets_sold: supabase.rpc ? undefined : undefined })
-      .eq('event_id', Number(eventId))
-      .maybeSingle()
-      .catch(() => null);
-
-    // Use raw increment via RPC if available, otherwise manual
-    const { data: evt } = await supabase
-      .from('events').select('tickets_sold').eq('event_id', Number(eventId)).single().catch(() => ({ data: null }));
-    if (evt) {
-      await supabase.from('events')
-        .update({ tickets_sold: (evt.tickets_sold || 0) + quantity })
+    // Increment tickets_sold
+    try {
+      const { data: evt } = await supabase
+        .from('events')
+        .select('tickets_sold')
         .eq('event_id', Number(eventId))
-        .catch(() => null);
-    }
+        .single();
+      if (evt) {
+        await supabase
+          .from('events')
+          .update({ tickets_sold: (evt.tickets_sold || 0) + quantity })
+          .eq('event_id', Number(eventId));
+      }
+    } catch (_) { /* non-critical */ }
 
     return data;
   }
