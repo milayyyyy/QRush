@@ -398,8 +398,21 @@ class ApiService {
 
     if (findError) throw new Error(`Lookup failed: ${findError.message}`);
     if (!ticket) throw new Error('Ticket not found');
-    if (ticket.status === 'USED') throw new Error('Ticket already used — already checked in');
-    if (ticket.status !== 'VALID') throw new Error(`Ticket cannot be scanned (status: ${ticket.status})`);
+
+    // Already used — return duplicate status instead of throwing so UI can handle gracefully
+    if (ticket.status === 'USED') {
+      return {
+        success: false,
+        status: 'duplicate',
+        message: 'Ticket already checked in.',
+        ticket: mapTicket(ticket),
+      };
+    }
+
+    // Allow scan for any ticket status VALID (regardless of event date)
+    if (ticket.status !== 'VALID') {
+      throw new Error(`Ticket cannot be scanned (status: ${ticket.status})`);
+    }
 
     const { data: updated, error: updateError } = await supabase
       .from('tickets')
@@ -419,7 +432,12 @@ class ApiService {
       scan_time: new Date().toISOString(),
     }]).catch(() => null);
 
-    return { success: true, ticket: mapTicket(updated) };
+    return {
+      success: true,
+      status: 'valid',
+      message: 'Ticket verified successfully.',
+      ticket: mapTicket(updated),
+    };
   }
 
   async manualVerifyTicket({ ticketNumber, eventId, staffId }) {

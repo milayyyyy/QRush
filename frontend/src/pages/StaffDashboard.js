@@ -85,8 +85,8 @@ const StaffDashboard = () => {
         const availableEvents = fetchedEvents.filter(event => {
           // Exclude cancelled events
           if ((event.status || '').toLowerCase() === 'cancelled') return false;
-          // Exclude ended events (eventEnd in the past)
-          if (event.eventEnd && new Date(event.eventEnd) < now) return false;
+          // Exclude events that have already ended
+          if (event.endDate && new Date(event.endDate) < now) return false;
           return true;
         });
         setEvents(availableEvents);
@@ -253,8 +253,7 @@ const StaffDashboard = () => {
       setManualResult(null);
       const response = await apiService.manualVerifyTicket({
         ticketNumber: trimmed,
-        staffUserId: user?.id ?? null,
-        gate: 'Ticket Validation Gate',
+        staffId: user?.id ?? null,
         eventId: selectedEventId
       });
 
@@ -284,7 +283,7 @@ const StaffDashboard = () => {
       }
     } catch (err) {
       console.error('Manual ticket verification failed', err);
-      toast.error('Unable to verify ticket. Please try again.');
+      toast.error(err?.message || 'Unable to verify ticket. Please try again.');
     } finally {
       setManualLoading(false);
     }
