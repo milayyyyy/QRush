@@ -89,8 +89,7 @@ const QRScanner = () => {
     try {
       const response = await apiService.scanTicket({
         qrCode: code,
-        staffUserId: user?.id ?? null,
-        gate: 'Main Gate'
+        staffId: user?.id ?? null,
       });
 
       const normalized = {

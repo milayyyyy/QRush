@@ -383,12 +383,11 @@ class ApiService {
   }
 
   async scanTicket({ qrCode, eventId, staffId }) {
-    const { data: ticket, error: findError } = await supabase
-      .from('tickets')
-      .select('*')
-      .eq('qr_code', qrCode)
-      .eq('event_id', Number(eventId))
-      .maybeSingle();
+    let query = supabase.from('tickets').select('*').eq('qr_code', qrCode);
+    if (eventId && !isNaN(Number(eventId))) {
+      query = query.eq('event_id', Number(eventId));
+    }
+    const { data: ticket, error: findError } = await query.maybeSingle();
 
     if (findError || !ticket) throw new Error('Ticket not found');
     if (ticket.status === 'USED') throw new Error('Ticket already used');
