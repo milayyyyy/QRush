@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /**
+=======
+﻿/**
+>>>>>>> d7c8696e7171a9c914c20559c1e554ca442065d9
  * API Service — Supabase direct client
  * All data operations go through the Supabase JS SDK.
  */
