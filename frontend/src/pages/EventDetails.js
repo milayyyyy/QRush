@@ -627,8 +627,8 @@ const EventDetails = () => {
               <CardContent className="p-6">
                 <div className="grid md:grid-cols-2 gap-6 mb-6">
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <Calendar className="w-5 h-5 text-orange-500" />
+                    <div className="flex items-start space-x-3">
+                      <Calendar className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-white">Date & Time</p>
                         <p className="text-gray-400">{formatDate(event.startDate)}</p>
@@ -636,8 +636,8 @@ const EventDetails = () => {
                       </div>
                     </div>
                     
-                    <div className="flex items-center space-x-3">
-                      <MapPin className="w-5 h-5 text-orange-500" />
+                    <div className="flex items-start space-x-3">
+                      <MapPin className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-white">Location</p>
                         <p className="text-gray-400">{event.location}</p>
@@ -649,8 +649,8 @@ const EventDetails = () => {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <Users className="w-5 h-5 text-orange-500" />
+                    <div className="flex items-start space-x-3">
+                      <Users className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-white">Registered</p>
                         <p className="text-gray-400">{event.capacity ? `${event.registered} / ${event.capacity} people` : attendeeSummary}</p>
@@ -663,8 +663,8 @@ const EventDetails = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-3">
-                      <User className="w-5 h-5 text-orange-500" />
+                    <div className="flex items-start space-x-3">
+                      <User className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-white">Organizer</p>
                         <p className="text-gray-400">{event.organizerName}</p>
