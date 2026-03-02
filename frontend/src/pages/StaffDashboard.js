@@ -17,12 +17,10 @@ import {
   Scan,
   AlertCircle,
   Calendar,
-  MapPin,
-  Trash2
+  MapPin
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
-import { isDemoAccount, mockStaffDashboard, getDemoEvents, deleteDemoEvent } from '../lib/demoData';
 
 const BULK_PLACEHOLDER = [
   'Enter ticket numbers, one per line',
@@ -60,23 +58,7 @@ const StaffDashboard = () => {
       }
       
       let data;
-      // Check if this is a demo account
-      if (isDemoAccount(user?.id)) {
-        // Build simple metrics from the demo event so it updates when events change
-        const event = getDemoEvents().find(e => e.eventID === eventId);
-        data = {
-          ...mockStaffDashboard,
-          eventName: event?.title || 'Demo event',
-          totalTickets: event?.capacity || 0,
-          pending: event ? Math.floor((event.capacity || 0) * 0.5) : 0,
-          checkedIn: event ? Math.floor((event.capacity || 0) * 0.2) : 0,
-          invalid: 0,
-        };
-      } else {
-        // Fetch real data from API
-        data = await apiService.getStaffDashboard(eventId);
-      }
-      
+      data = await apiService.getStaffDashboard(eventId);
       setDashboard(data);
       setError(null);
     } catch (err) {
@@ -96,15 +78,7 @@ const StaffDashboard = () => {
         setLoading(true);
         
         let fetchedEvents;
-        // Check if this is a demo account
-        if (isDemoAccount(user?.id)) {
-          // Use demo events from storage so they stay in sync with organizer
-          fetchedEvents = getDemoEvents();
-          toast.info('Using demo data - no backend required!');
-        } else {
-          // Fetch real events from API
-          fetchedEvents = await apiService.getEvents();
-        }
+        fetchedEvents = await apiService.getEvents();
         
         // Only include available events (not cancelled, not ended)
         const now = new Date();
@@ -472,26 +446,6 @@ const StaffDashboard = () => {
                   </option>
                 ))}
               </select>
-              {isDemoAccount(user.id) && selectedEventId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    deleteDemoEvent(selectedEventId);
-                    toast.success('Demo event removed');
-                    // re-initialize events list
-                    const fetched = getDemoEvents().filter(e => (e.status || '').toLowerCase() !== 'cancelled');
-                    setEvents(fetched);
-                    const newDefault = fetched[0]?.eventID ?? null;
-                    setSelectedEventId(newDefault);
-                    if (newDefault) await fetchDashboard(newDefault);
-                  }}
-                  className="text-red-500 hover:text-red-400 hover:bg-red-900/20 border-red-500/50"
-                  title="Delete this demo event"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              )}
             </div>
           </div>
         ) : (

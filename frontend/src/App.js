@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import { supabase } from './config/supabase';
 
 // Components
 import Navbar from './components/Navbar';
@@ -18,7 +19,7 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import { Toaster } from './components/ui/sonner';
 
-// Mock authentication context
+// Authentication context
 const AuthContext = React.createContext();
 
 export const useAuth = () => React.useContext(AuthContext);
@@ -27,23 +28,67 @@ function App() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock authentication - simulate checking for existing session
-  useEffect(() => {
-    const savedUser = localStorage.getItem('qrush_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+  // Restore session from Supabase on startup
+  const restoreSession = useCallback(async () => {
+    try {
+      if (!supabase) {
+        setIsLoading(false);
+        return;
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', session.user.email)
+          .maybeSingle();
+        if (userRow) {
+          setUser({
+            id: userRow.user_id,
+            email: userRow.email,
+            name: userRow.name,
+            role: (userRow.role || 'attendee').toLowerCase(),
+            contact: userRow.contact || '',
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userRow.email}`,
+          });
+        } else {
+          const meta = session.user.user_metadata || {};
+          setUser({
+            id: session.user.id,
+            email: session.user.email,
+            name: meta.name || session.user.email.split('@')[0],
+            role: (meta.role || 'attendee').toLowerCase(),
+            contact: meta.contact || '',
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Session restore failed:', e);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    restoreSession();
+
+    if (!supabase) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [restoreSession]);
 
   const login = (userData) => {
     setUser(userData);
-    localStorage.setItem('qrush_user', JSON.stringify(userData));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (supabase) await supabase.auth.signOut().catch(() => null);
     setUser(null);
-    localStorage.removeItem('qrush_user');
   };
 
   const authValue = React.useMemo(() => ({

@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
-import { isDemoAccount, findDemoEventById } from '../lib/demoData';
 
 const formatDate = (dateString) => {
   if (!dateString) {
@@ -436,15 +435,7 @@ const EventDetails = () => {
       
       try {
         let response;
-        // Load demo data if applicable
-        if (isDemoAccount(user?.id) && id && id.startsWith('demo-')) {
-          response = findDemoEventById(id);
-          if (!response) {
-            throw new Error('Demo event not found');
-          }
-        } else {
-          response = await apiService.getEvent(id);
-        }
+        response = await apiService.getEvent(id);
         
         const storedProfile = getStoredOrganizerProfile();
         const mapped = mapEventResponse(response, storedProfile, user);

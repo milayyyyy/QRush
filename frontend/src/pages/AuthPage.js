@@ -74,34 +74,6 @@ const AuthPage = () => {
     }
   ];
 
-  // Demo accounts for quick testing
-  const demoAccounts = {
-    attendee: {
-      id: 'demo-attendee-123',
-      email: 'demo.attendee@qrush.com',
-      name: 'Demo Attendee',
-      role: 'attendee',
-      contact: '09123456789',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo-attendee'
-    },
-    organizer: {
-      id: 'demo-organizer-456',
-      email: 'demo.organizer@qrush.com',
-      name: 'Demo Organizer',
-      role: 'organizer',
-      contact: '09987654321',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo-organizer'
-    },
-    staff: {
-      id: 'demo-staff-789',
-      email: 'demo.staff@qrush.com',
-      name: 'Demo Staff',
-      role: 'staff',
-      contact: '09555555555',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo-staff'
-    }
-  };
-
   // Real-time email validation triggered on field interaction
   useEffect(() => {
     if (touchedFields.email) {
@@ -155,16 +127,6 @@ const AuthPage = () => {
     setTouchedFields(prev => ({ ...prev, [fieldName]: true }));
   };
 
-  // Handle demo account login
-  const handleDemoLogin = (demoRole) => {
-    const demoUser = demoAccounts[demoRole];
-    if (demoUser) {
-      login(demoUser);
-      toast.success(`Welcome to QRush, ${demoUser.name}!`);
-      navigate('/dashboard');
-    }
-  };
-
   // Authentication submission handler for both login and registration
   const handleSubmit = async (e, isLogin = true) => {
     e.preventDefault();
@@ -177,58 +139,13 @@ const AuthPage = () => {
     const contactNum = formData.get('contact');
 
     try {
-      let response;
-      let userData;
-      
       if (isLogin) {
-        // Try Supabase first if available, then fall back to Spring Boot
-        if (apiService.isSupabaseAvailable()) {
-          try {
-            response = await apiService.supabaseLogin({
-              email: email,
-              password: password
-            });
-            
-            // Extract user data from Supabase response
-            userData = {
-              id: response.user.id,
-              email: response.user.email,
-              name: response.user.user_metadata?.name || response.user.email.split('@')[0],
-              role: response.user.user_metadata?.role || 'attendee',
-              contact: response.user.user_metadata?.contact || '',
-              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${response.user.email}`
-            };
-          } catch (supabaseError) {
-            console.warn('Supabase login failed, trying backend:', supabaseError);
-            // Fall back to Spring Boot backend
-            response = await apiService.login({
-              email: email,
-              password: password
-            });
-            userData = {
-              id: response.userID,
-              email: response.email,
-              name: response.name,
-              role: response.role.toLowerCase(),
-              contact: response.contact,
-              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${response.email}`
-            };
-          }
-        } else {
-          // Use Spring Boot backend
-          response = await apiService.login({
-            email: email,
-            password: password
-          });
-          userData = {
-            id: response.userID,
-            email: response.email,
-            name: response.name,
-            role: response.role.toLowerCase(),
-            contact: response.contact,
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${response.email}`
-          };
-        }
+        const userData = await apiService.login({ email, password });
+        login(userData);
+        toast.success(`Welcome back, ${userData.name}!`);
+        navigate('/dashboard');
+        setIsLoading(false);
+        return;
       }
 
       if (!isLogin) {
@@ -271,42 +188,16 @@ const AuthPage = () => {
           return;
         }
 
-        // Try Supabase first if available
-        if (apiService.isSupabaseAvailable()) {
-          try {
-            await apiService.supabaseSignup({
-              email: email,
-              password: password
-            });
-            toast.success('Account created successfully! Please sign in.');
-            setName('');
-            setEmail('');
-            setPassword('');
-            setContact('');
-            setBirthdate('');
-            setGender('');
-            setSelectedRole('');
-            setTouchedFields({});
-            setCurrentTab('login');
-            setIsLoading(false);
-            return;
-          } catch (supabaseError) {
-            console.warn('Supabase signup failed, trying backend:', supabaseError);
-          }
-        }
-        
-        // Use Spring Boot backend for registration
-        response = await apiService.signup({
-          name: name,
-          email: email,
-          password: password,
-          role: selectedRole.toUpperCase(),
+        const result = await apiService.signup({
+          name,
+          email,
+          password,
+          role: selectedRole,
           contact: contactNum,
-          birthdate: birthdate,
-          gender: gender
+          birthdate,
+          gender
         });
-        
-        toast.success(response.message);
+        toast.success(result.message || 'Account created successfully! Please sign in.');
         setName('');
         setEmail('');
         setPassword('');
@@ -318,13 +209,6 @@ const AuthPage = () => {
         setCurrentTab('login');
         setIsLoading(false);
         return;
-      }
-
-      // Login flow
-      if (userData) {
-        login(userData);
-        toast.success(`Welcome back, ${userData.name}!`);
-        navigate('/dashboard');
       }
       
     } catch (error) {
@@ -497,43 +381,7 @@ const AuthPage = () => {
                     )}
                   </Button>
 
-                  {/* Demo Account Divider */}
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-700"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="px-2 bg-gray-900 text-gray-400">Try Demo Accounts</span>
-                    </div>
-                  </div>
 
-                  {/* Demo Account Buttons */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => handleDemoLogin('attendee')}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-sm h-10"
-                    >
-                      <Users className="w-4 h-4 mr-2" />
-                      Attendee
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => handleDemoLogin('organizer')}
-                      className="bg-green-600 hover:bg-green-700 text-white text-sm h-10"
-                    >
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Organizer
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => handleDemoLogin('staff')}
-                      className="bg-purple-600 hover:bg-purple-700 text-white text-sm h-10"
-                    >
-                      <Smartphone className="w-4 h-4 mr-2" />
-                      Staff
-                    </Button>
-                  </div>
                 </form>
 
                 <div className="text-center text-sm text-gray-400">
@@ -756,7 +604,7 @@ const AuthPage = () => {
 
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500">
-            Real authentication with Spring Boot backend
+            Powered by Supabase
           </p>
         </div>
       </div>

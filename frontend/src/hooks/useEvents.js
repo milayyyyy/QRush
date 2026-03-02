@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
-import { getDemoEvents } from '../lib/demoData';
 
 export const useEvents = () => {
   const [events, setEvents] = useState([]);
@@ -18,14 +17,7 @@ export const useEvents = () => {
           rating: event.rating ?? null,
           image: event.image ?? '',
         }));
-        // include locally stored demo events
-        const demoEvents = getDemoEvents().map((event) => ({
-          ...event,
-          registered: event.registered ?? 0,
-          rating: event.rating ?? null,
-          image: event.image ?? '',
-        }));
-        setEvents([...normalised, ...demoEvents]);
+        setEvents(normalised);
       } catch (err) {
         setError(err.message);
       } finally {
