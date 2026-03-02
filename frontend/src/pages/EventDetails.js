@@ -348,7 +348,7 @@ const processTicketPurchase = ({
         navigate('/dashboard');
         return `Successfully booked ${ticketQuantity} ${ticketType.name} ticket${ticketQuantity > 1 ? 's' : ''}!`;
       },
-      error: 'Unable to complete the booking. Please try again.',
+      error: (err) => err?.message || 'Unable to complete the booking. Please try again.',
     }
   );
 };

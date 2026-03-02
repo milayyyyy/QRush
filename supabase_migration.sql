@@ -232,3 +232,46 @@ CREATE POLICY "Users can view own tickets" ON tickets
 -- Users can view their own payments
 CREATE POLICY "Users can view own payments" ON payments
   FOR SELECT USING (true);
+
+-- Allow authenticated users to insert tickets (purchase flow)
+CREATE POLICY "Users can insert tickets" ON tickets
+  FOR INSERT WITH CHECK (true);
+
+-- Allow ticket status updates (check-in/scan flow)
+CREATE POLICY "Users can update tickets" ON tickets
+  FOR UPDATE USING (true);
+
+-- Allow users and organizers to insert/update events
+CREATE POLICY "Users can insert events" ON events
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can update events" ON events
+  FOR UPDATE USING (true);
+
+-- Allow attendance log inserts (scan flow)
+CREATE POLICY "Users can insert attendance logs" ON attendance_logs
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can view attendance logs" ON attendance_logs
+  FOR SELECT USING (true);
+
+-- Allow notification inserts and updates
+CREATE POLICY "Users can insert notifications" ON notifications
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can view notifications" ON notifications
+  FOR SELECT USING (true);
+
+CREATE POLICY "Users can update notifications" ON notifications
+  FOR UPDATE USING (true);
+
+-- Allow event view tracking inserts
+CREATE POLICY "Users can insert event views" ON event_views
+  FOR INSERT WITH CHECK (true);
+
+-- Allow user profile inserts and updates (signup flow)
+CREATE POLICY "Users can insert profile" ON users
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can update profile" ON users
+  FOR UPDATE USING (true);
