@@ -189,7 +189,7 @@ const OrganizerDashboard = () => {
         continue;
       }
 
-      const start = event.eventStart ? new Date(event.eventStart) : null;
+      const start = event.startDate ? new Date(event.startDate) : null;
       if (!start || Number.isNaN(start.getTime())) {
         const existing = totals.get('unscheduled') ?? {
           label: 'Unscheduled',
@@ -284,7 +284,7 @@ const OrganizerDashboard = () => {
     const rows = (dashboard?.events ?? []).map((event) => ({
       Title: event.title,
       Status: event.status,
-      Date: formatDate(event.eventStart),
+      Date: formatDate(event.startDate),
       Capacity: event.capacity ?? 0,
       TicketsSold: event.ticketsSold ?? 0,
       Revenue: formatCurrency(event.revenue ?? 0),
@@ -436,7 +436,7 @@ const OrganizerDashboard = () => {
       return (
         (event.title && event.title.toLowerCase().includes(search)) ||
         (event.status && event.status.toLowerCase().includes(search)) ||
-        (event.eventStart && new Date(event.eventStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase().includes(search))
+        (event.startDate && new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase().includes(search))
       );
     });
   const stats = {
@@ -586,7 +586,7 @@ const OrganizerDashboard = () => {
                           <div>
                             <p className="text-sm font-medium text-gray-400">Date</p>
                             <p className="text-lg font-semibold text-white">
-                              {formatDate(event.eventStart)}
+                              {formatDate(event.startDate)}
                             </p>
                           </div>
                           
