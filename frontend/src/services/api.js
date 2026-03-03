@@ -437,15 +437,17 @@ class ApiService {
       .single();
     throwIf(updateError);
 
-    await supabase.from('attendance_logs').insert([{
-      ticket_id: ticket.ticket_id,
-      user_id: ticket.user_id,
-      event_id: ticket.event_id,
-      staff_user_id: staffId ? Number(staffId) : null,
-      verification_status: 'CHECKED_IN',
-      check_in_time: now,
-      scan_time: now,
-    }]).catch(() => null);
+    try {
+      await supabase.from('attendance_logs').insert([{
+        ticket_id: ticket.ticket_id,
+        user_id: ticket.user_id,
+        event_id: ticket.event_id,
+        staff_user_id: staffId ? Number(staffId) : null,
+        verification_status: 'CHECKED_IN',
+        check_in_time: now,
+        scan_time: now,
+      }]);
+    } catch (_) { /* non-critical, ignore */ }
 
     return {
       success: true,
