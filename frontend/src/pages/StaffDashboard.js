@@ -362,12 +362,9 @@ const StaffDashboard = () => {
     (ticket.attendeeEmail || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const validScans = scannedTickets.filter((ticket) => {
-    const status = (ticket.status || '').toLowerCase();
-    return status.includes('valid') || status.includes('checked');
-  }).length;
-
-  const invalidScans = Math.max(scannedTickets.length - validScans, 0);
+  // Use dashboard ticket-table counts (reliable) for summary stats
+  const validScans = dashboard?.checkedIn ?? 0;
+  const invalidScans = dashboard?.invalid ?? 0;
   const successRate = validScans + invalidScans === 0 ? 0 : Math.round((validScans / (validScans + invalidScans)) * 100);
 
   if (loading) {
@@ -407,9 +404,9 @@ const StaffDashboard = () => {
   const currentEvent = dashboard?.currentEvent ?? null;
   const totalCapacity = dashboard?.totalCapacity ?? 0;
   const ticketsSold = dashboard?.ticketsSold ?? 0;
-  const checkedIn = dashboard?.checkedIn ?? validScans;
+  const checkedIn = dashboard?.checkedIn ?? 0;
   const pending = dashboard?.pending ?? Math.max(ticketsSold - checkedIn, 0);
-  const issueCount = invalidScans;
+  const issueCount = dashboard?.invalid ?? 0;
   const manualStatus = (manualResult?.status || '').toLowerCase();
   const bulkResults = Array.isArray(bulkResult?.results) ? bulkResult.results : [];
 
