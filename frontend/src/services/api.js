@@ -398,24 +398,40 @@ class ApiService {
     if (findError) throw new Error(`Lookup failed: ${findError.message}`);
     if (!ticket) throw new Error('Ticket not found');
 
-    // Already used — return duplicate status instead of throwing so UI can handle gracefully
+    // Fetch attendee info and event info in parallel
+    const [userResult, eventResult] = await Promise.all([
+      supabase.from('users').select('name, email').eq('user_id', ticket.user_id).maybeSingle(),
+      supabase.from('events').select('name').eq('event_id', ticket.event_id).maybeSingle(),
+    ]);
+    const attendee = userResult.data || {};
+    const eventName = eventResult.data?.name || 'Unknown Event';
+    const ticketNumber = `TCK-${String(ticket.ticket_id).padStart(6, '0')}`;
+    const now = new Date().toISOString();
+
+    // Already used — return duplicate status with full display info
     if (ticket.status === 'USED') {
       return {
         success: false,
         status: 'duplicate',
         message: 'Ticket already checked in.',
+        attendeeName: attendee.name || 'Unknown',
+        attendeeEmail: attendee.email || '—',
+        ticketNumber,
+        eventTitle: eventName,
+        scannedAt: ticket.check_in_time || now,
+        previousScanAt: ticket.check_in_time || null,
         ticket: mapTicket(ticket),
       };
     }
 
-    // Allow scan for any ticket status VALID (regardless of event date)
+    // Only VALID tickets can be scanned
     if (ticket.status !== 'VALID') {
       throw new Error(`Ticket cannot be scanned (status: ${ticket.status})`);
     }
 
     const { data: updated, error: updateError } = await supabase
       .from('tickets')
-      .update({ status: 'USED', check_in_time: new Date().toISOString() })
+      .update({ status: 'USED', check_in_time: now })
       .eq('ticket_id', ticket.ticket_id)
       .select()
       .single();
@@ -427,14 +443,20 @@ class ApiService {
       event_id: ticket.event_id,
       staff_user_id: staffId ? Number(staffId) : null,
       verification_status: 'CHECKED_IN',
-      check_in_time: new Date().toISOString(),
-      scan_time: new Date().toISOString(),
+      check_in_time: now,
+      scan_time: now,
     }]).catch(() => null);
 
     return {
       success: true,
       status: 'valid',
       message: 'Ticket verified successfully.',
+      attendeeName: attendee.name || 'Unknown',
+      attendeeEmail: attendee.email || '—',
+      ticketNumber,
+      eventTitle: eventName,
+      scannedAt: now,
+      previousScanAt: null,
       ticket: mapTicket(updated),
     };
   }
